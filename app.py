@@ -39,7 +39,7 @@ We encourage the community to upload their model predictions in the prescribed J
 # Setup paths
 # ---------------------------
 SUBMISSION_DIR = "submissions"
-REFERENCE_FILE = "data/clean_eval_set_1000.json"
+REFERENCE_FILE = "data/samples_1000.json"
 os.makedirs(SUBMISSION_DIR, exist_ok=True)
 
 # ---------------------------
