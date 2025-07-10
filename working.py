@@ -8,26 +8,6 @@ st.set_page_config(page_title="JNANA QA Leaderboard", layout="wide")
 st.title("📊 JNANA Telugu QA Leaderboard")
 
 # ---------------------------
-# About Section
-# ---------------------------
-st.markdown("""
-**Welcome to the official JNANA QA Leaderboard!**
-
-This leaderboard evaluates Telugu short-answer question-answering models using a curated 1000-sample benchmark.
-
-**Metrics Explained:**
-- **EM (%)** – Exact string match with the gold answer.
-- **F1 (%)** – Overlap between predicted and true answers.
-- **Answered (%)** – Percentage of questions with any non-empty answer.
-- **Hallucinated (%)** – Answers that are not grounded in the given context.
-- **Faithful Correct (%)** – Exact match and grounded.
-- **Faithful Incorrect (%)** – Answer is in the context but incorrect.
-- **Empty (%)** – No answer was returned.
-
-We encourage the community to upload their model predictions in the prescribed JSON format and track progress over time.
-""")
-
-# ---------------------------
 # Setup paths
 # ---------------------------
 SUBMISSION_DIR = "submissions"
@@ -111,9 +91,10 @@ for file in submission_files:
             "Hallucinated (%)": round(df['hallucinated'].mean() * 100, 2),
             "Faithful Correct (%)": round((df['breakdown'] == 'faithful_correct').mean() * 100, 2),
             "Empty (%)": breakdown_counts.get("empty", 0.0),
-            "Hallucinated Breakdown (%)": breakdown_counts.get("hallucinated", 0.0),
-            "Faithful Incorrect (%)": breakdown_counts.get("faithful_incorrect", 0.0)
+            "Hallucinated (%)": breakdown_counts.get("hallucinated", 0.0),
+            "Faithful Incorrect (%)": breakdown_counts.get("faithful_incorrect", 0.0),
         })
+
 
 # ---------------------------
 # Leaderboard View
@@ -122,6 +103,19 @@ st.subheader("🏆 Leaderboard")
 if leaderboard_rows:
     leaderboard_df = pd.DataFrame(leaderboard_rows)
     st.dataframe(leaderboard_df)
+
+    with st.expander("ℹ️ Explanation of Metrics"):
+        st.markdown("""
+        - **Exact Match (EM)**: % of predictions exactly matching the gold answer.
+        - **F1 Score**: Harmonic mean of precision and recall between predicted and gold answers.
+        - **Answerable**: % of questions where the model provided a non-empty answer.
+        - **Hallucination**: % of answers that were not present in the context and didn’t match the gold answer.
+        - **Breakdown Types**:
+            - `faithful_correct`: Prediction exactly matches gold.
+            - `faithful_incorrect`: Prediction is in context but does not match gold.
+            - `hallucinated`: Answer is not in context and mismatches gold.
+            - `empty`: No prediction was provided.
+        """)
 else:
     st.info("No submissions found yet. Upload your first model in the sidebar!")
 
