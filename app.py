@@ -15,7 +15,9 @@ st.markdown("""
 
 This leaderboard evaluates Telugu short-answer question-answering models using a curated 1000-sample benchmark.
 
-**Metrics Explained:**
+📎 **Download Evaluation Dataset**: [samples_1000.json](https://github.com/vipplavai/JNANA_leaderboard/blob/main/data/samples_1000.json)
+
+### Metrics Explained:
 - **EM (%)** – Exact string match with the gold answer.
 - **F1 (%)** – Overlap between predicted and true answers.
 - **Answered (%)** – Percentage of questions with any non-empty answer.
@@ -25,13 +27,19 @@ This leaderboard evaluates Telugu short-answer question-answering models using a
 - **Empty (%)** – No answer was returned.
 
 We encourage the community to upload their model predictions in the prescribed JSON format and track progress over time.
+
+### How to Use the Sample Explorer:
+- Select a model submission from the dropdown.
+- Filter by any specific error type (e.g., hallucinated, faithful_correct).
+- Use the slider to explore examples.
+- For each sample, you can view the question, gold answer, model prediction, and full context passage.
 """)
 
 # ---------------------------
 # Setup paths
 # ---------------------------
 SUBMISSION_DIR = "submissions"
-REFERENCE_FILE = "data/samples_1000.json"
+REFERENCE_FILE = "data/clean_eval_set_1000.json"
 os.makedirs(SUBMISSION_DIR, exist_ok=True)
 
 # ---------------------------
