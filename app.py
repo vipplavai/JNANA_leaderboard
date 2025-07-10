@@ -90,8 +90,8 @@ all_data = {}
 for file in submission_files:
     df = load_submission(os.path.join(SUBMISSION_DIR, file))
     if df is not None and len(df) > 0:
-        if "hallucination_type" in df.columns:
-            df['breakdown'] = df['hallucination_type']
+        if "type" in df.columns:
+            df['breakdown'] = df['type']
         else:
             df['breakdown'] = df.apply(
                 lambda row: "hallucinated" if row['hallucinated'] else (
