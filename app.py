@@ -10,7 +10,7 @@ from pymongo import MongoClient
 # ---------------------------
 MONGO_URI = st.secrets["mongo_uri"] if "mongo_uri" in st.secrets else "mongodb://localhost:27017"
 client = MongoClient(MONGO_URI)
-db = client["jnana_leaderboard"]
+db = client["Leaderboard"]
 ref_collection = db["reference_samples"]
 
 # ---------------------------
