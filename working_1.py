@@ -12,7 +12,6 @@ MONGO_URI = st.secrets["mongo_uri"] if "mongo_uri" in st.secrets else "mongodb:/
 client = MongoClient(MONGO_URI)
 db = client["Leaderboard"]
 ref_collection = db["reference_samples"]
-submissions_collection = db["submissions"]
 
 # ---------------------------
 # Streamlit UI Config
@@ -47,108 +46,95 @@ ref_cursor = ref_collection.find({})
 ref_lookup = {(item["content_id"], item["qa_index"]): item.get("content_text", "") for item in ref_cursor}
 
 # ---------------------------
-# File Upload Section with Validation
+# File Upload Section
 # ---------------------------
+SUBMISSION_DIR = "submissions"
+os.makedirs(SUBMISSION_DIR, exist_ok=True)
+
 st.sidebar.header("📥 Submit Your Model Output")
 model_name = st.sidebar.text_input("Model Name (optional)")
 author_name = st.sidebar.text_input("Your Name or Alias (optional)")
 uploaded_file = st.sidebar.file_uploader("Upload result JSON file", type="json")
 
-REQUIRED_FIELDS = {
-    "content_id", "qa_index", "question", "gold_answer", "prediction",
-    "exact_match", "f1_score", "answerable", "hallucinated", "type"
-}
-
-def validate_submission(data):
-    """Check if each record has the correct structure."""
-    errors = []
-    for i, item in enumerate(data):
-        missing = REQUIRED_FIELDS - item.keys()
-        if missing:
-            errors.append(f"❌ Record {i} missing fields: {missing}")
-    return errors
-
 if uploaded_file:
-    raw_bytes = uploaded_file.read()
-    try:
-        parsed_data = json.loads(raw_bytes)
-        if not isinstance(parsed_data, list):
-            st.sidebar.error("❌ Submission file must be a list of JSON objects.")
-        else:
-            validation_errors = validate_submission(parsed_data)
-            if validation_errors:
-                st.sidebar.error("Validation failed!")
-                for err in validation_errors[:5]:
-                    st.sidebar.write(err)
-                if len(validation_errors) > 5:
-                    st.sidebar.warning(f"...and {len(validation_errors)-5} more errors")
-            else:
-                # Save submission to MongoDB
-                timestamp = datetime.utcnow()
-                meta = {
-                    "model": model_name or "unnamed_model",
-                    "author": author_name or "anonymous",
-                    "timestamp": timestamp,
-                    "results": parsed_data
-                }
-                submissions_collection.insert_one(meta)
-                st.sidebar.success("✅ Submission uploaded and validated successfully!")
-                st.rerun()
-    except json.JSONDecodeError:
-        st.sidebar.error("❌ Invalid JSON format. Please check your file.")
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    name = model_name if model_name else "unnamed_model"
+    author = author_name if author_name else "anonymous"
+    filename = f"{name.replace(' ', '_')}_{author.replace(' ', '_')}_{timestamp}.json"
+    save_path = os.path.join(SUBMISSION_DIR, filename)
+    with open(save_path, "wb") as f:
+        f.write(uploaded_file.read())
+    st.sidebar.success(f"✅ Uploaded and saved as: {filename}")
+    st.rerun()
 
 # ---------------------------
-# Load Submissions from MongoDB
+# Load All Submissions
 # ---------------------------
-submissions = list(submissions_collection.find({}))
+def load_submission(file_path):
+    try:
+        with open(file_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        df = pd.DataFrame(data)
+        return df
+    except Exception:
+        return None
+
+submission_files = [f for f in os.listdir(SUBMISSION_DIR) if f.endswith(".json")]
 leaderboard_rows = []
 all_data = {}
 
-for sub in submissions:
-    df = pd.DataFrame(sub["results"])
-    if df.empty:
-        continue
-    df["breakdown"] = df["type"]
+for file in submission_files:
+    df = load_submission(os.path.join(SUBMISSION_DIR, file))
+    if df is not None and len(df) > 0:
+        if "type" in df.columns:
+            df["breakdown"] = df["type"]
+        else:
+            df["breakdown"] = df.apply(
+                lambda row: "hallucinated" if row["hallucinated"] else (
+                    "empty" if not row["prediction"].strip() else (
+                        "faithful_correct" if row["exact_match"] else "faithful_incorrect"
+                    )
+                ), axis=1
+            )
 
-    if "content_text" not in df.columns:
-        df["content_text"] = df.apply(
-            lambda row: ref_lookup.get((row["content_id"], row["qa_index"]), "[context not available]"),
-            axis=1
-        )
+        # Add context if missing
+        if "content_text" not in df.columns:
+            df["content_text"] = df.apply(
+                lambda row: ref_lookup.get((row["content_id"], row["qa_index"]), "[context not available]"),
+                axis=1
+            )
 
-    sub_id = str(sub["_id"])
-    all_data[sub_id] = df
-    breakdown = df["breakdown"].value_counts(normalize=True).mul(100).round(2).to_dict()
+        all_data[file] = df
+        breakdown = df["breakdown"].value_counts(normalize=True).mul(100).round(2).to_dict()
 
-    leaderboard_rows.append({
-        "Model": sub["model"],
-        "Author": sub["author"],
-        "Samples": len(df),
-        "EM (%)": round(df["exact_match"].mean() * 100, 2),
-        "F1 (%)": round(df["f1_score"].mean() * 100, 2),
-        "Answered (%)": round(df["answerable"].mean() * 100, 2),
-        "Hallucinated (%)": round(df["hallucinated"].mean() * 100, 2),
-        "Faithful Correct (%)": round((df["breakdown"] == "faithful_correct").mean() * 100, 2),
-        "Faithful Incorrect (%)": breakdown.get("faithful_incorrect", 0.0),
-        "Hallucinated Breakdown (%)": breakdown.get("hallucinated", 0.0),
-        "Empty (%)": breakdown.get("empty", 0.0),
-        "Timestamp": sub["timestamp"].strftime("%Y-%m-%d %H:%M")
-    })
+        leaderboard_rows.append({
+            "Filename": file,
+            "Samples": len(df),
+            "EM (%)": round(df["exact_match"].mean() * 100, 2),
+            "F1 (%)": round(df["f1_score"].mean() * 100, 2),
+            "Answered (%)": round(df["answerable"].mean() * 100, 2),
+            "Hallucinated (%)": round(df["hallucinated"].mean() * 100, 2),
+            "Faithful Correct (%)": round((df["breakdown"] == "faithful_correct").mean() * 100, 2),
+            "Faithful Incorrect (%)": breakdown.get("faithful_incorrect", 0.0),
+            "Hallucinated Breakdown (%)": breakdown.get("hallucinated", 0.0),
+            "Empty (%)": breakdown.get("empty", 0.0),
+        })
 
 # ---------------------------
-# Leaderboard View
+# Leaderboard Table
 # ---------------------------
 st.subheader("🏆 Leaderboard")
 if leaderboard_rows:
     leaderboard_df = pd.DataFrame(leaderboard_rows)
     st.dataframe(leaderboard_df)
 else:
-    st.info("No submissions found yet.")
+    st.info("No submissions found yet. Upload your first model in the sidebar!")
 
 # ---------------------------
 # Sample Explorer
 # ---------------------------
 st.subheader("🔍 Sample Explorer")
+
 st.markdown("""
 ℹ️ **How to Use:**
 - Choose a submission.
@@ -157,10 +143,10 @@ st.markdown("""
 - Each sample includes the question, gold answer, model prediction, and context.
 """)
 
-selected_id = st.selectbox("Choose a submission to explore", ["None"] + list(all_data.keys()))
+selected_file = st.selectbox("Choose a submission to explore", ["None"] + submission_files)
 
-if selected_id != "None":
-    df = all_data[selected_id]
+if selected_file != "None":
+    df = all_data[selected_file]
     tag_filter = st.selectbox("Breakdown Filter", ["all"] + sorted(df["breakdown"].unique()))
     if tag_filter != "all":
         df = df[df["breakdown"] == tag_filter]
@@ -170,10 +156,12 @@ if selected_id != "None":
     else:
         index = st.slider("Sample index", 0, len(df)-1, 0)
         sample = df.iloc[index]
+
         st.markdown(f"**Q{sample['qa_index']}**: {sample['question']}")
         st.markdown(f"**Gold Answer**: {sample['gold_answer']}")
         st.markdown(f"**Prediction**: {sample['prediction']}")
         st.markdown(f"**F1**: {sample['f1_score']:.2f} | EM: {sample['exact_match']} | Hallucinated: {sample['hallucinated']}")
         st.markdown(f"**Type**: {sample['breakdown']}")
         st.markdown("---")
-        st.markdown(f"**Context:**\n\n{sample['content_text']}")
+        context = sample.get("content_text", "[context not available]")
+        st.markdown(f"**Context:**\n\n{context}")
