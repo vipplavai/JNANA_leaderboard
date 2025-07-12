@@ -61,14 +61,18 @@ if uploaded_file:
     try:
         data = json.loads(raw_json)
         if isinstance(data, list) and all(REQUIRED_KEYS.issubset(d.keys()) for d in data):
-            # Save backup
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             name = model_name if model_name else "unnamed_model"
             author = author_name if author_name else "anonymous"
             filename = f"{name.replace(' ', '_')}_{author.replace(' ', '_')}_{timestamp}.json"
+
+            # Optional local backup
             with open(f"submissions/{filename}", "w", encoding="utf-8") as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
-            
+
+            # 🧼 Remove previous uploads from same model-author
+            submissions_collection.delete_many({"model_name": name, "author": author})
+
             # Add metadata and insert into MongoDB
             for d in data:
                 d["model_name"] = name
@@ -76,12 +80,13 @@ if uploaded_file:
                 d["timestamp"] = timestamp
             submissions_collection.insert_many(data)
 
-            st.sidebar.success("✅ Submission validated and stored successfully!")
+            st.sidebar.success("✅ Uploaded, validated, and saved successfully!")
             st.rerun()
         else:
-            st.sidebar.error("❌ Invalid JSON structure. Please check required keys.")
+            st.sidebar.error("❌ Invalid JSON format. Please check required keys.")
     except Exception as e:
-        st.sidebar.error(f"❌ Failed to load JSON: {e}")
+        st.sidebar.error(f"❌ JSON Load Error: {e}")
+
 
 # ---------------------------
 # Load Submissions from MongoDB
