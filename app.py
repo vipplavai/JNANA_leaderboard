@@ -43,8 +43,12 @@ This leaderboard evaluates Telugu short-answer question-answering models using a
 # ---------------------------
 # Load Reference Samples from MongoDB
 # ---------------------------
-ref_cursor = ref_collection.find({})
-ref_lookup = {(item["content_id"], item["qa_index"]): item.get("content_text", "") for item in ref_cursor}
+try:
+    ref_cursor = ref_collection.find({})
+    ref_lookup = {(item["content_id"], item["qa_index"]): item.get("content_text", "") for item in ref_cursor}
+except Exception as e:
+    st.error(f"Failed to load reference data: {e}")
+    ref_lookup = {}
 
 # ---------------------------
 # File Upload Section with Validation
@@ -60,12 +64,25 @@ REQUIRED_FIELDS = {
 }
 
 def validate_submission(data):
-    """Check if each record has the correct structure."""
+    """Check if each record has the correct structure and data types."""
     errors = []
     for i, item in enumerate(data):
         missing = REQUIRED_FIELDS - item.keys()
         if missing:
             errors.append(f"❌ Record {i} missing fields: {missing}")
+        
+        # Validate data types
+        try:
+            if not isinstance(item.get("exact_match"), bool):
+                errors.append(f"❌ Record {i}: exact_match must be boolean")
+            if not isinstance(item.get("f1_score"), (int, float)):
+                errors.append(f"❌ Record {i}: f1_score must be numeric")
+            if not isinstance(item.get("answerable"), bool):
+                errors.append(f"❌ Record {i}: answerable must be boolean")
+            if not isinstance(item.get("hallucinated"), bool):
+                errors.append(f"❌ Record {i}: hallucinated must be boolean")
+        except Exception:
+            errors.append(f"❌ Record {i}: invalid data types")
     return errors
 
 if uploaded_file:
@@ -84,23 +101,31 @@ if uploaded_file:
                     st.sidebar.warning(f"...and {len(validation_errors)-5} more errors")
             else:
                 # Save submission to MongoDB
-                timestamp = datetime.utcnow()
-                meta = {
-                    "model": model_name or "unnamed_model",
-                    "author": author_name or "anonymous",
-                    "timestamp": timestamp,
-                    "results": parsed_data
-                }
-                submissions_collection.insert_one(meta)
-                st.sidebar.success("✅ Submission uploaded and validated successfully!")
-                st.rerun()
+                try:
+                    timestamp = datetime.utcnow()
+                    meta = {
+                        "model": model_name or "unnamed_model",
+                        "author": author_name or "anonymous",
+                        "timestamp": timestamp,
+                        "results": parsed_data
+                    }
+                    submissions_collection.insert_one(meta)
+                    st.sidebar.success("✅ Submission uploaded and validated successfully!")
+                    st.rerun()
+                except Exception as e:
+                    st.sidebar.error(f"❌ Failed to save submission: {e}")
     except json.JSONDecodeError:
         st.sidebar.error("❌ Invalid JSON format. Please check your file.")
 
 # ---------------------------
 # Load Submissions from MongoDB
 # ---------------------------
-submissions = list(submissions_collection.find({}))
+try:
+    submissions = list(submissions_collection.find({}))
+except Exception as e:
+    st.error(f"Failed to load submissions: {e}")
+    submissions = []
+
 leaderboard_rows = []
 all_data = {}
 
@@ -130,7 +155,6 @@ for sub in submissions:
         "Hallucinated (%)": round(df["hallucinated"].mean() * 100, 2),
         "Faithful Correct (%)": round((df["breakdown"] == "faithful_correct").mean() * 100, 2),
         "Faithful Incorrect (%)": breakdown.get("faithful_incorrect", 0.0),
-        "Hallucinated Breakdown (%)": breakdown.get("hallucinated", 0.0),
         "Empty (%)": breakdown.get("empty", 0.0),
         "Timestamp": sub["timestamp"].strftime("%Y-%m-%d %H:%M")
     })
