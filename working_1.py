@@ -56,6 +56,7 @@ uploaded_file = st.sidebar.file_uploader("Upload result JSON file", type="json")
 REQUIRED_KEYS = {"content_id", "qa_index", "question", "gold_answer", "prediction",
                  "exact_match", "f1_score", "answerable", "hallucinated", "type"}
 
+# Inside Upload Section
 if uploaded_file:
     raw_json = uploaded_file.read()
     try:
@@ -64,63 +65,61 @@ if uploaded_file:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             name = model_name if model_name else "unnamed_model"
             author = author_name if author_name else "anonymous"
-            filename = f"{name.replace(' ', '_')}_{author.replace(' ', '_')}_{timestamp}.json"
 
-            # Optional local backup
-            with open(f"submissions/{filename}", "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False, indent=2)
-
-            # 🧼 Remove previous uploads from same model-author
+            # Delete previous submission for same model-author
             submissions_collection.delete_many({"model_name": name, "author": author})
 
-            # Add metadata and insert into MongoDB
-            for d in data:
-                d["model_name"] = name
-                d["author"] = author
-                d["timestamp"] = timestamp
-            submissions_collection.insert_many(data)
-
-            st.sidebar.success("✅ Uploaded, validated, and saved successfully!")
+            # Save one doc with all samples
+            submission_doc = {
+                "model_name": name,
+                "author": author,
+                "timestamp": timestamp,
+                "samples": data
+            }
+            submissions_collection.insert_one(submission_doc)
+            st.sidebar.success("✅ Uploaded & stored successfully in MongoDB.")
             st.rerun()
         else:
-            st.sidebar.error("❌ Invalid JSON format. Please check required keys.")
+            st.sidebar.error("❌ Invalid submission format.")
     except Exception as e:
-        st.sidebar.error(f"❌ JSON Load Error: {e}")
+        st.sidebar.error(f"❌ JSON error: {e}")
+
 
 
 # ---------------------------
 # Load Submissions from MongoDB
 # ---------------------------
-all_data = {}
+submissions_cursor = submissions_collection.find()
 leaderboard_rows = []
+all_data = {}
 
-for meta in submissions_collection.aggregate([
-    {"$group": {
-        "_id": {"model_name": "$model_name", "author": "$author", "timestamp": "$timestamp"},
-        "count": {"$sum": 1}
-    }},
-    {"$sort": {"_id.timestamp": -1}}
-]):
-    m = meta["_id"]
-    query = {"model_name": m["model_name"], "author": m["author"], "timestamp": m["timestamp"]}
-    records = list(submissions_collection.find(query))
-    df = pd.DataFrame(records)
+for doc in submissions_cursor:
+    samples = doc["samples"]
+    df = pd.DataFrame(samples)
 
-    df["breakdown"] = df["type"]
-    if "content_text" not in df.columns:
-        df["content_text"] = df.apply(
-            lambda row: ref_lookup.get((row["content_id"], row["qa_index"]), "[context not available]"),
-            axis=1
+    if "type" not in df.columns:
+        df["type"] = df.apply(
+            lambda row: "hallucinated" if row["hallucinated"] else (
+                "empty" if not row["prediction"].strip() else (
+                    "faithful_correct" if row["exact_match"] else "faithful_incorrect"
+                )
+            ), axis=1
         )
 
-    file_id = f"{m['model_name']}_{m['author']}_{m['timestamp']}"
-    all_data[file_id] = df
+    df["content_text"] = df.apply(
+        lambda row: ref_lookup.get((row["content_id"], row["qa_index"]), "[context not available]"),
+        axis=1
+    )
+
+    df["breakdown"] = df["type"]
+    key = f"{doc['model_name']} - {doc['author']} ({doc['timestamp']})"
+    all_data[key] = df
 
     breakdown = df["breakdown"].value_counts(normalize=True).mul(100).round(2).to_dict()
     leaderboard_rows.append({
-        "Model": m["model_name"],
-        "Author": m["author"],
-        "Time": m["timestamp"],
+        "Model": doc["model_name"],
+        "Author": doc["author"],
+        "Timestamp": doc["timestamp"],
         "Samples": len(df),
         "EM (%)": round(df["exact_match"].mean() * 100, 2),
         "F1 (%)": round(df["f1_score"].mean() * 100, 2),
@@ -129,8 +128,9 @@ for meta in submissions_collection.aggregate([
         "Faithful Correct (%)": round((df["breakdown"] == "faithful_correct").mean() * 100, 2),
         "Faithful Incorrect (%)": breakdown.get("faithful_incorrect", 0.0),
         "Hallucinated Breakdown (%)": breakdown.get("hallucinated", 0.0),
-        "Empty (%)": breakdown.get("empty", 0.0),
+        "Empty (%)": breakdown.get("empty", 0.0)
     })
+
 
 # ---------------------------
 # Leaderboard Table
