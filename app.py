@@ -75,8 +75,28 @@ This leaderboard evaluates Telugu short-answer question-answering models using a
 # ---------------------------
 # Reference Cache
 # ---------------------------
+<<<<<<< HEAD
 ref_cursor = ref_collection.find({})
 ref_lookup = {(item["content_id"], item["qa_index"]): item.get("content_text", "") for item in ref_cursor}
+=======
+<<<<<<< HEAD
+try:
+    ref_cursor = ref_collection.find({})
+    ref_lookup = {(item["content_id"], item["qa_index"]): item.get("content_text", "") for item in ref_cursor}
+except Exception as e:
+    st.error(f"Failed to load reference data: {e}")
+    ref_lookup = {}
+=======
+@st.cache_data
+def get_ref_lookup():
+    return {
+        (item["content_id"], item["qa_index"]): item.get("content_text", "")
+        for item in ref_collection.find({})
+    }
+
+ref_lookup = get_ref_lookup()
+>>>>>>> 1a4335e (17th)
+>>>>>>> a9be370 (17th)
 
 # ---------------------------
 # Upload Submission
@@ -92,7 +112,14 @@ REQUIRED_FIELDS = {
 }
 
 def validate_submission(data):
+<<<<<<< HEAD
     """Check if each record has the correct structure."""
+=======
+<<<<<<< HEAD
+    """Check if each record has the correct structure and data types."""
+=======
+>>>>>>> 1a4335e (17th)
+>>>>>>> a9be370 (17th)
     errors = []
     for i, item in enumerate(data):
         missing = REQUIRED_FIELDS - item.keys()
@@ -128,7 +155,9 @@ if uploaded_file and "uploaded" not in st.session_state:
                 if len(validation_errors) > 5:
                     st.sidebar.warning(f"...and {len(validation_errors)-5} more errors")
             else:
+<<<<<<< HEAD
                 # Save submission to MongoDB
+<<<<<<< HEAD
                 timestamp = datetime.utcnow()
                 meta = {
                     "model": model_name or "unnamed_model",
@@ -139,15 +168,58 @@ if uploaded_file and "uploaded" not in st.session_state:
                 submissions_collection.insert_one(meta)
                 st.sidebar.success("✅ Submission uploaded and validated successfully!")
                 st.rerun()
+=======
+                try:
+                    timestamp = datetime.utcnow()
+                    meta = {
+                        "model": model_name or "unnamed_model",
+                        "author": author_name or "anonymous",
+                        "timestamp": timestamp,
+                        "results": parsed_data
+                    }
+                    submissions_collection.insert_one(meta)
+                    st.sidebar.success("✅ Submission uploaded and validated successfully!")
+                    st.rerun()
+                except Exception as e:
+                    st.sidebar.error(f"❌ Failed to save submission: {e}")
+=======
+                metrics = compute_metrics(parsed_data)
+                meta = {
+                    "model": model_name or "unnamed_model",
+                    "author": author_name or "anonymous",
+                    "timestamp": datetime.utcnow(),
+                    "metrics": metrics,
+                    "results": parsed_data
+                }
+                submissions_collection.insert_one(meta)
+                st.session_state["uploaded"] = True
+                st.sidebar.success("✅ Submission uploaded successfully!")
+                st.rerun()
+>>>>>>> 1a4335e (17th)
+>>>>>>> a9be370 (17th)
     except json.JSONDecodeError:
         st.sidebar.error("❌ Invalid JSON format.")
 
 # ---------------------------
 # Load Submissions
 # ---------------------------
+<<<<<<< HEAD
 submissions = list(submissions_collection.find({}))
+=======
+<<<<<<< HEAD
+try:
+    submissions = list(submissions_collection.find({}))
+except Exception as e:
+    st.error(f"Failed to load submissions: {e}")
+    submissions = []
+
+>>>>>>> a9be370 (17th)
 leaderboard_rows = []
 all_data = {}
+=======
+submissions = list(submissions_collection.find({}))
+leaderboard_rows, all_data = [], {}
+>>>>>>> 1a4335e (17th)
 
 for sub in submissions:
     df = pd.DataFrame(sub["results"])
@@ -161,6 +233,7 @@ for sub in submissions:
     m = sub.get("metrics", {})
 
     leaderboard_rows.append({
+<<<<<<< HEAD
         "Model": sub["model"],
         "Author": sub["author"],
         "Samples": len(df),
@@ -172,6 +245,18 @@ for sub in submissions:
         "Faithful Incorrect (%)": breakdown.get("faithful_incorrect", 0.0),
         "Hallucinated Breakdown (%)": breakdown.get("hallucinated", 0.0),
         "Empty (%)": breakdown.get("empty", 0.0),
+=======
+        "Model": sub.get("model", "N/A"),
+        "Author": sub.get("author", "N/A"),
+        "Samples": m.get("total", 1000),
+        "EM (%)": m.get("em", 0.0),
+        "F1 (%)": m.get("f1", 0.0),
+        "Answered (%)": m.get("answered", 0.0),
+        "Hallucinated (%)": m.get("hallucinated", 0.0),
+        "Faithful Correct (%)": m.get("faithful_correct", 0.0),
+        "Faithful Incorrect (%)": m.get("faithful_incorrect", 0.0),
+        "Empty (%)": m.get("empty", 0.0),
+>>>>>>> 1a4335e (17th)
         "Timestamp": sub["timestamp"].strftime("%Y-%m-%d %H:%M")
     })
 
