@@ -1,9 +1,50 @@
 import streamlit as st
 import pandas as pd
 import json
-import os
 from datetime import datetime
 from pymongo import MongoClient
+from typing import List, Dict
+
+# ---------------------------
+# Metric Computation
+# ---------------------------
+def compute_metrics(data: List[Dict]) -> Dict:
+    total = len(data)
+    if total == 0:
+        return {key: 0.0 for key in [
+            "total", "em", "f1", "answered", "hallucinated", "faithful_correct",
+            "faithful_incorrect", "empty", "faa", "f1_em_gap",
+            "overconfident_em", "robust_answer_rate", "avg_answer_length"
+        ]}
+
+    em = sum(1 for d in data if d.get("exact_match")) / total * 100
+    f1 = sum(d.get("f1_score", 0) for d in data) / total
+    answered = sum(1 for d in data if d.get("answerable")) / total * 100
+    hallucinated = sum(1 for d in data if d.get("hallucinated")) / total * 100
+    faithful_correct = sum(1 for d in data if d.get("type") == "faithful_correct") / total * 100
+    faithful_incorrect = sum(1 for d in data if d.get("type") == "faithful_incorrect") / total * 100
+    empty = sum(1 for d in data if d.get("type") == "empty") / total * 100
+    faa = faithful_correct
+    f1_em_gap = f1 - em
+    overconfident_em = sum(1 for d in data if d.get("hallucinated") and d.get("exact_match")) / total * 100
+    robust_answer_rate = max(answered - hallucinated, 0.0)
+    avg_answer_length = sum(len(str(d.get("prediction", "")).split()) for d in data) / total
+
+    return {
+        "total": total,
+        "em": round(em, 2),
+        "f1": round(f1, 2),
+        "answered": round(answered, 2),
+        "hallucinated": round(hallucinated, 2),
+        "faithful_correct": round(faithful_correct, 2),
+        "faithful_incorrect": round(faithful_incorrect, 2),
+        "empty": round(empty, 2),
+        "faa": round(faa, 2),
+        "f1_em_gap": round(f1_em_gap, 2),
+        "overconfident_em": round(overconfident_em, 2),
+        "robust_answer_rate": round(robust_answer_rate, 2),
+        "avg_answer_length": round(avg_answer_length, 2)
+    }
 
 # ---------------------------
 # MongoDB Setup
@@ -29,25 +70,22 @@ st.markdown("""
 This leaderboard evaluates Telugu short-answer question-answering models using a curated 1000-sample benchmark.
 
 📎 **Download Evaluation Dataset**: [samples_1000.json](https://github.com/vipplavai/JNANA_leaderboard/blob/main/data/samples_1000.json)
-
-### Metrics Explained:
-- **EM (%)** – Exact string match with the gold answer.
-- **F1 (%)** – Overlap between predicted and true answers.
-- **Answered (%)** – Percentage of questions with any non-empty answer.
-- **Hallucinated (%)** – Answers that are not grounded in the given context.
-- **Faithful Correct (%)** – Exact match and grounded.
-- **Faithful Incorrect (%)** – Answer is in the context but incorrect.
-- **Empty (%)** – No answer was returned.
 """)
 
 # ---------------------------
-# Load Reference Samples from MongoDB
+# Reference Cache
 # ---------------------------
-ref_cursor = ref_collection.find({})
-ref_lookup = {(item["content_id"], item["qa_index"]): item.get("content_text", "") for item in ref_cursor}
+@st.cache_data
+def get_ref_lookup():
+    return {
+        (item["content_id"], item["qa_index"]): item.get("content_text", "")
+        for item in ref_collection.find({})
+    }
+
+ref_lookup = get_ref_lookup()
 
 # ---------------------------
-# File Upload Section with Validation
+# Upload Submission
 # ---------------------------
 st.sidebar.header("📥 Submit Your Model Output")
 model_name = st.sidebar.text_input("Model Name (optional)")
@@ -60,7 +98,6 @@ REQUIRED_FIELDS = {
 }
 
 def validate_submission(data):
-    """Check if each record has the correct structure."""
     errors = []
     for i, item in enumerate(data):
         missing = REQUIRED_FIELDS - item.keys()
@@ -68,7 +105,7 @@ def validate_submission(data):
             errors.append(f"❌ Record {i} missing fields: {missing}")
     return errors
 
-if uploaded_file:
+if uploaded_file and "uploaded" not in st.session_state:
     raw_bytes = uploaded_file.read()
     try:
         parsed_data = json.loads(raw_bytes)
@@ -83,67 +120,61 @@ if uploaded_file:
                 if len(validation_errors) > 5:
                     st.sidebar.warning(f"...and {len(validation_errors)-5} more errors")
             else:
-                # Save submission to MongoDB
-                timestamp = datetime.utcnow()
+                metrics = compute_metrics(parsed_data)
                 meta = {
                     "model": model_name or "unnamed_model",
                     "author": author_name or "anonymous",
-                    "timestamp": timestamp,
+                    "timestamp": datetime.utcnow(),
+                    "metrics": metrics,
                     "results": parsed_data
                 }
                 submissions_collection.insert_one(meta)
-                st.sidebar.success("✅ Submission uploaded and validated successfully!")
+                st.session_state["uploaded"] = True
+                st.sidebar.success("✅ Submission uploaded successfully!")
                 st.rerun()
     except json.JSONDecodeError:
-        st.sidebar.error("❌ Invalid JSON format. Please check your file.")
+        st.sidebar.error("❌ Invalid JSON format.")
 
 # ---------------------------
-# Load Submissions from MongoDB
+# Load Submissions
 # ---------------------------
 submissions = list(submissions_collection.find({}))
-leaderboard_rows = []
-all_data = {}
+leaderboard_rows, all_data = [], {}
 
 for sub in submissions:
     df = pd.DataFrame(sub["results"])
-    if df.empty:
-        continue
     df["breakdown"] = df["type"]
-
-    if "content_text" not in df.columns:
-        df["content_text"] = df.apply(
-            lambda row: ref_lookup.get((row["content_id"], row["qa_index"]), "[context not available]"),
-            axis=1
-        )
-
+    df["content_text"] = df.apply(
+        lambda row: ref_lookup.get((row["content_id"], row["qa_index"]), "[context not available]"),
+        axis=1
+    )
     sub_id = str(sub["_id"])
     all_data[sub_id] = df
-    breakdown = df["breakdown"].value_counts(normalize=True).mul(100).round(2).to_dict()
+    m = sub.get("metrics", {})
 
     leaderboard_rows.append({
-        "Model": sub["model"],
-        "Author": sub["author"],
-        "Samples": len(df),
-        "EM (%)": round(df["exact_match"].mean() * 100, 2),
-        "F1 (%)": round(df["f1_score"].mean() * 100, 2),
-        "Answered (%)": round(df["answerable"].mean() * 100, 2),
-        "Hallucinated (%)": round(df["hallucinated"].mean() * 100, 2),
-        "Faithful Correct (%)": round((df["breakdown"] == "faithful_correct").mean() * 100, 2),
-        "Faithful Incorrect (%)": breakdown.get("faithful_incorrect", 0.0),
-        "Hallucinated Breakdown (%)": breakdown.get("hallucinated", 0.0),
-        "Empty (%)": breakdown.get("empty", 0.0),
+        "Model": sub.get("model", "N/A"),
+        "Author": sub.get("author", "N/A"),
+        "Samples": m.get("total", 1000),
+        "EM (%)": m.get("em", 0.0),
+        "F1 (%)": m.get("f1", 0.0),
+        "Answered (%)": m.get("answered", 0.0),
+        "Hallucinated (%)": m.get("hallucinated", 0.0),
+        "Faithful Correct (%)": m.get("faithful_correct", 0.0),
+        "Faithful Incorrect (%)": m.get("faithful_incorrect", 0.0),
+        "Empty (%)": m.get("empty", 0.0),
         "Timestamp": sub["timestamp"].strftime("%Y-%m-%d %H:%M")
     })
 
 # ---------------------------
-# Leaderboard View
+# Leaderboard
 # ---------------------------
 st.subheader("🏆 Leaderboard")
 if leaderboard_rows:
     leaderboard_df = pd.DataFrame(leaderboard_rows)
-    st.dataframe(leaderboard_df)
+    st.dataframe(leaderboard_df, use_container_width=True)
 else:
-    st.info("No submissions found yet.")
+    st.info("No submissions yet.")
 
 # ---------------------------
 # Sample Explorer
@@ -153,8 +184,7 @@ st.markdown("""
 ℹ️ **How to Use:**
 - Choose a submission.
 - Filter samples by type: hallucinated, faithful_correct, etc.
-- Use the slider to browse through examples.
-- Each sample includes the question, gold answer, model prediction, and context.
+- Use the slider to browse examples.
 """)
 
 selected_id = st.selectbox("Choose a submission to explore", ["None"] + list(all_data.keys()))
@@ -165,15 +195,15 @@ if selected_id != "None":
     if tag_filter != "all":
         df = df[df["breakdown"] == tag_filter]
 
-    if len(df) == 0:
-        st.warning("No samples found for this filter.")
+    if df.empty:
+        st.warning("No samples for this filter.")
     else:
-        index = st.slider("Sample index", 0, len(df)-1, 0)
-        sample = df.iloc[index]
-        st.markdown(f"**Q{sample['qa_index']}**: {sample['question']}")
-        st.markdown(f"**Gold Answer**: {sample['gold_answer']}")
-        st.markdown(f"**Prediction**: {sample['prediction']}")
-        st.markdown(f"**F1**: {sample['f1_score']:.2f} | EM: {sample['exact_match']} | Hallucinated: {sample['hallucinated']}")
-        st.markdown(f"**Type**: {sample['breakdown']}")
+        i = st.slider("Sample Index", 0, len(df) - 1, 0)
+        row = df.iloc[i]
+        st.markdown(f"**Q{row['qa_index']}**: {row['question']}")
+        st.markdown(f"**Gold Answer**: {row['gold_answer']}")
+        st.markdown(f"**Prediction**: {row['prediction']}")
+        st.markdown(f"**F1**: {row['f1_score']:.2f} | EM: {row['exact_match']} | Hallucinated: {row['hallucinated']}")
+        st.markdown(f"**Type**: {row['breakdown']}")
         st.markdown("---")
-        st.markdown(f"**Context:**\n\n{sample['content_text']}")
+        st.markdown(f"**Context**:\n\n{row['content_text']}")
