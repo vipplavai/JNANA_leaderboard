@@ -38,6 +38,9 @@ class UIComponents:
         </style>
         """, unsafe_allow_html=True)
 
+        # Submission form toggle button at the very top
+        UIComponents._render_toggle_button()
+
         # Header with instructions
         st.title("🏆 JNANA Telugu QA Leaderboard")
         st.markdown("**Evaluate your Telugu question-answering models on our curated 1000-sample benchmark**")
@@ -48,13 +51,14 @@ class UIComponents:
         st.markdown("---")
 
     @staticmethod
-    def render_submission_form():
+    def _render_toggle_button():
+        """Render the toggle button for sidebar visibility"""
         # Initialize sidebar visibility state
         if 'sidebar_visible' not in st.session_state:
             st.session_state.sidebar_visible = True
 
         # Add toggle button in upper left corner
-        col1, col2 = st.columns([3, 1])
+        col1, col2 = st.columns([1, 4])
         with col1:
             if st.session_state.sidebar_visible:
                 button_text = "🔽 Hide Panel"
@@ -69,8 +73,10 @@ class UIComponents:
         with col2:
             st.empty()  # Empty space to keep button on left
 
+    @staticmethod
+    def render_submission_form():
         # Only render sidebar content if visible
-        if not st.session_state.sidebar_visible:
+        if not st.session_state.get('sidebar_visible', True):
             return {"submitted": False}
 
         st.sidebar.header("📤 Submit Your Results")
