@@ -218,29 +218,15 @@ if uploaded_file and "uploaded" not in st.session_state:
 # Load Submissions from MongoDB
 # ---------------------------
 def load_submissions():
-    """Load submissions and ensure they all have proper context"""
+    """Load submissions without trying to embed context - context will be loaded separately"""
     try:
         submissions = list(submissions_collection.find({}).sort("timestamp", -1))  # Sort by newest first
         leaderboard_rows, all_data = [], {}
         
-        # Get fresh reference lookup to ensure context is available
-        current_ref_lookup = get_ref_lookup()
-        
         for sub in submissions:
+            # Just load the submission data without trying to add context here
             df = pd.DataFrame(sub["results"])
             df["breakdown"] = df["type"]
-            
-            # Always ensure content_text is properly added using fresh reference lookup
-            def get_context(row):
-                context = current_ref_lookup.get((int(row["content_id"]), int(row["qa_index"])), "[context not available]")
-                return context
-            
-            df["content_text"] = df.apply(get_context, axis=1)
-            
-            # Verify context coverage for debugging
-            missing_context = (df["content_text"] == "[context not available]").sum()
-            total_samples = len(df)
-            context_coverage = ((total_samples - missing_context) / total_samples * 100) if total_samples > 0 else 0
             
             # Create a readable submission identifier
             model_name = sub.get("model", "Unknown")
@@ -256,8 +242,7 @@ def load_submissions():
             
             all_data[display_name] = {
                 "data": df,
-                "metadata": sub,
-                "context_coverage": context_coverage
+                "metadata": sub
             }
             
             m = sub.get("metrics", {})
@@ -341,6 +326,19 @@ if all_data:
         df = submission_info["data"]
         metadata = submission_info["metadata"]
         
+        # Get fresh reference lookup for context
+        current_ref_lookup = get_ref_lookup()
+        
+        # Calculate context coverage
+        total_samples = len(df)
+        context_available = 0
+        for _, row in df.iterrows():
+            key = (int(row["content_id"]), int(row["qa_index"]))
+            if key in current_ref_lookup and current_ref_lookup[key].strip():
+                context_available += 1
+        
+        context_coverage = (context_available / total_samples * 100) if total_samples > 0 else 0
+        
         # Show submission metadata
         col1, col2, col3, col4 = st.columns(4)
         with col1:
@@ -350,7 +348,6 @@ if all_data:
         with col3:
             st.metric("F1 Score", f"{metadata.get('metrics', {}).get('f1', 0):.1f}%")
         with col4:
-            context_coverage = submission_info.get('context_coverage', 0)
             st.metric("Context Coverage", f"{context_coverage:.1f}%")
         
         # Add notes if available
@@ -367,12 +364,16 @@ if all_data:
             i = st.slider("Sample Index", 0, len(df) - 1, 0)
             row = df.iloc[i]
             
+            # Get context from reference_samples collection using the lookup
+            context_key = (int(row["content_id"]), int(row["qa_index"]))
+            context_text = current_ref_lookup.get(context_key, "[Context not available]")
+            
             st.markdown(f"**Q{row['qa_index']}**: {row['question']}")
             st.markdown(f"**Gold Answer**: {row['gold_answer']}")
             st.markdown(f"**Prediction**: {row['prediction']}")
             st.markdown(f"**F1**: {row['f1_score']:.2f} | EM: {row['exact_match']} | Hallucinated: {row['hallucinated']}")
             st.markdown(f"**Type**: {row['breakdown']}")
             st.markdown("---")
-            st.markdown(f"**Context**:\n\n{row['content_text']}")
+            st.markdown(f"**Context**:\n\n{context_text}")
 else:
     st.info("No submissions available yet. Submit your first model to see results here!")
