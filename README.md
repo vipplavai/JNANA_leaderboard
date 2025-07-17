@@ -166,7 +166,6 @@ High F1 + High Hallucination = Creative but Unreliable ⚠️
 Low Answered + Low Hallucination = Conservative Model 🤔
 High FAA = Best Overall Performance 🏆
 ```
-
 ## 🖥️ Sample Explorer Guide
 
 ### Getting Started
@@ -175,35 +174,6 @@ High FAA = Best Overall Performance 🏆
 3. **🏷️ Filter Samples**: Use type filter to focus on specific prediction categories
 4. **🎚️ Navigate**: Use slider to browse through filtered samples
 5. **📖 View Context**: Click "Show Context" to see source passages
-
-### Key Features
-
-**📈 Performance Dashboard**: Comprehensive metrics overview with detailed breakdowns
-- Core metrics prominently displayed
-- Advanced analytics in expandable sections
-- Top performer highlights
-
-**🔍 Individual Sample Analysis**: 
-- Question, gold answer, and model prediction comparison
-- F1 scores and exact match indicators
-- Sample type classification with visual indicators
-
-**📖 Context Verification**:
-- View source Telugu passages
-- Verify if predictions are grounded in the text
-- Essential for evaluating faithfulness
-
-**🏷️ Type-based Filtering**: Focus analysis on specific behaviors
-- `faithful_correct`: Best performance examples
-- `faithful_incorrect`: Logic and reasoning errors  
-- `hallucinated`: Dangerous ungrounded outputs
-- `empty`: Coverage gaps and missed questions
-
-### Sample Explorer Tips
-- Use filters to identify patterns in model behavior
-- Check context for surprising predictions
-- Compare F1 vs EM scores to understand answer quality
-- Focus on hallucinated samples to identify safety issues
 
 ## 🔗 Useful Links
 
@@ -219,13 +189,6 @@ High FAA = Best Overall Performance 🏆
 - **📧 Primary Contact**: [research@jnana-leaderboard.org](mailto:research@jnana-leaderboard.org)
 - **🔬 Technical Issues**: [tech-support@jnana-leaderboard.org](mailto:tech-support@jnana-leaderboard.org)
 - **🤝 Collaborations**: [partnerships@jnana-leaderboard.org](mailto:partnerships@jnana-leaderboard.org)
-
-### Contributing
-We welcome contributions to improve the leaderboard:
-- **🐛 Bug Reports**: Use GitHub Issues
-- **💡 Feature Requests**: Start a GitHub Discussion  
-- **📝 Documentation**: Submit pull requests
-- **🧪 Model Submissions**: Use the web interface
 
 ### Citation
 If you use JNANA Telugu QA Leaderboard in your research, please cite:
