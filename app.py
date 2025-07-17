@@ -253,17 +253,18 @@ if leaderboard_rows:
     leaderboard_df = pd.DataFrame(leaderboard_rows)
     
     if show_advanced:
-        # Get fresh submissions data for advanced metrics
+        # Add advanced metrics columns
         try:
-            submissions = list(submissions_collection.find({}).sort("timestamp", -1))
-            for i, sub in enumerate(submissions):
-                if i < len(leaderboard_df):
-                    m = sub.get("metrics", {})
-                    leaderboard_df.loc[i, "FAA (%)"] = m.get("faa", 0.0)
-                    leaderboard_df.loc[i, "F1-EM Gap"] = m.get("f1_em_gap", 0.0)
-                    leaderboard_df.loc[i, "Overconfident EM (%)"] = m.get("overconfident_em", 0.0)
-                    leaderboard_df.loc[i, "Robust Answer Rate (%)"] = m.get("robust_answer_rate", 0.0)
-                    leaderboard_df.loc[i, "Avg Answer Length"] = m.get("avg_answer_length", 0.0)
+            if MONGODB_AVAILABLE and submissions_collection is not None:
+                submissions = list(submissions_collection.find({}).sort("timestamp", -1))
+                for i, sub in enumerate(submissions):
+                    if i < len(leaderboard_df):
+                        m = sub.get("metrics", {})
+                        leaderboard_df.loc[i, "FAA (%)"] = m.get("faa", 0.0)
+                        leaderboard_df.loc[i, "F1-EM Gap"] = m.get("f1_em_gap", 0.0)
+                        leaderboard_df.loc[i, "Overconfident EM (%)"] = m.get("overconfident_em", 0.0)
+                        leaderboard_df.loc[i, "Robust Answer Rate (%)"] = m.get("robust_answer_rate", 0.0)
+                        leaderboard_df.loc[i, "Avg Answer Length"] = m.get("avg_answer_length", 0.0)
         except Exception as e:
             st.warning(f"Could not load advanced metrics: {e}")
     
@@ -378,6 +379,9 @@ if all_data:
                 st.markdown("---")
                 st.markdown(f"**Context**:\n\n{context_text}")
                 
+        except KeyError as e:
+            st.error(f"Missing required field in submission data: {e}")
+            st.info("This submission may be using an older format. Please re-submit using the current format.")
         except Exception as e:
             st.error(f"Error loading submission data: {e}")
             st.info("This might be due to data format issues. Please try refreshing or selecting a different submission.")

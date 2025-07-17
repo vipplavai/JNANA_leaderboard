@@ -20,7 +20,7 @@ def compute_metrics(data: List[Dict]) -> Dict:
         }
 
     em = sum(1 for d in data if d.get("exact_match")) / total * 100
-    f1 = sum(d.get("f1_score", 0) for d in data) / total
+    f1 = sum(d.get("f1_score", 0) for d in data) / total * 100
     answered = sum(1 for d in data if d.get("answerable")) / total * 100
     hallucinated = sum(1 for d in data if d.get("hallucinated")) / total * 100
     faithful_correct = sum(1 for d in data if d.get("type") == "faithful_correct") / total * 100
