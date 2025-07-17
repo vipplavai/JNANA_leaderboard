@@ -347,75 +347,75 @@ if all_data:
             metadata = submission_info["metadata"]
             
             st.info(f"📊 Processing {len(df)} samples from selected submission...")
-        
-        # Load context directly from reference_samples collection for each sample
-        def get_context_for_sample(content_id, qa_index):
-            """Get context directly from reference_samples collection"""
-            try:
-                # First try the cached lookup (fastest)
-                context = ref_lookup.get((int(content_id), int(qa_index)))
-                if context:
-                    return context
-                
-                # Fallback to MongoDB if cache miss and MongoDB available
-                if MONGODB_AVAILABLE and ref_collection is not None:
-                    ref_doc = ref_collection.find_one({
-                        "content_id": int(content_id),
-                        "qa_index": int(qa_index)
-                    })
-                    if ref_doc and ref_doc.get("content_text"):
-                        return ref_doc["content_text"]
-                
-                return "[Context not available]"
-            except Exception as e:
-                return f"[Error loading context: {e}]"
+            
+            # Load context directly from reference_samples collection for each sample
+            def get_context_for_sample(content_id, qa_index):
+                """Get context directly from reference_samples collection"""
+                try:
+                    # First try the cached lookup (fastest)
+                    context = ref_lookup.get((int(content_id), int(qa_index)))
+                    if context:
+                        return context
+                    
+                    # Fallback to MongoDB if cache miss and MongoDB available
+                    if MONGODB_AVAILABLE and ref_collection is not None:
+                        ref_doc = ref_collection.find_one({
+                            "content_id": int(content_id),
+                            "qa_index": int(qa_index)
+                        })
+                        if ref_doc and ref_doc.get("content_text"):
+                            return ref_doc["content_text"]
+                    
+                    return "[Context not available]"
+                except Exception as e:
+                    return f"[Error loading context: {e}]"
         
         # Calculate context coverage using cached lookup (much faster)
-        total_samples = len(df)
-        context_available = 0
-        for _, row in df.iterrows():
-            key = (int(row["content_id"]), int(row["qa_index"]))
-            if key in ref_lookup and ref_lookup[key]:
-                context_available += 1
-        
-        context_coverage = (context_available / total_samples * 100) if total_samples > 0 else 0
+            total_samples = len(df)
+            context_available = 0
+            for _, row in df.iterrows():
+                key = (int(row["content_id"]), int(row["qa_index"]))
+                if key in ref_lookup and ref_lookup[key]:
+                    context_available += 1
+            
+            context_coverage = (context_available / total_samples * 100) if total_samples > 0 else 0
         
         # Show submission metadata
-        col1, col2, col3, col4 = st.columns(4)
-        with col1:
-            st.metric("Total Samples", len(df))
-        with col2:
-            st.metric("EM Score", f"{metadata.get('metrics', {}).get('em', 0):.1f}%")
-        with col3:
-            st.metric("F1 Score", f"{metadata.get('metrics', {}).get('f1', 0):.1f}%")
-        with col4:
-            st.metric("Context Coverage", f"{context_coverage:.1f}%")
-        
-        # Add notes if available
-        if metadata.get("notes"):
-            st.info(f"**Notes**: {metadata['notes']}")
-        
-        tag_filter = st.selectbox("Breakdown Filter", ["all"] + sorted(df["breakdown"].unique()))
-        if tag_filter != "all":
-            df = df[df["breakdown"] == tag_filter]
+            col1, col2, col3, col4 = st.columns(4)
+            with col1:
+                st.metric("Total Samples", len(df))
+            with col2:
+                st.metric("EM Score", f"{metadata.get('metrics', {}).get('em', 0):.1f}%")
+            with col3:
+                st.metric("F1 Score", f"{metadata.get('metrics', {}).get('f1', 0):.1f}%")
+            with col4:
+                st.metric("Context Coverage", f"{context_coverage:.1f}%")
+            
+            # Add notes if available
+            if metadata.get("notes"):
+                st.info(f"**Notes**: {metadata['notes']}")
+            
+            tag_filter = st.selectbox("Breakdown Filter", ["all"] + sorted(df["breakdown"].unique()))
+            if tag_filter != "all":
+                df = df[df["breakdown"] == tag_filter]
 
-        if df.empty:
-            st.warning("No samples for this filter.")
-        else:
-            i = st.slider("Sample Index", 0, len(df) - 1, 0)
-            row = df.iloc[i]
-            
-            # Get context directly from reference_samples collection
-            context_text = get_context_for_sample(row["content_id"], row["qa_index"])
-            
-            st.markdown(f"**Q{row['qa_index']}**: {row['question']}")
-            st.markdown(f"**Gold Answer**: {row['gold_answer']}")
-            st.markdown(f"**Prediction**: {row['prediction']}")
-            st.markdown(f"**F1**: {row['f1_score']:.2f} | EM: {row['exact_match']} | Hallucinated: {row['hallucinated']}")
-            st.markdown(f"**Type**: {row['breakdown']}")
-            st.markdown("---")
-            st.markdown(f"**Context**:\n\n{context_text}")
-            
+            if df.empty:
+                st.warning("No samples for this filter.")
+            else:
+                i = st.slider("Sample Index", 0, len(df) - 1, 0)
+                row = df.iloc[i]
+                
+                # Get context directly from reference_samples collection
+                context_text = get_context_for_sample(row["content_id"], row["qa_index"])
+                
+                st.markdown(f"**Q{row['qa_index']}**: {row['question']}")
+                st.markdown(f"**Gold Answer**: {row['gold_answer']}")
+                st.markdown(f"**Prediction**: {row['prediction']}")
+                st.markdown(f"**F1**: {row['f1_score']:.2f} | EM: {row['exact_match']} | Hallucinated: {row['hallucinated']}")
+                st.markdown(f"**Type**: {row['breakdown']}")
+                st.markdown("---")
+                st.markdown(f"**Context**:\n\n{context_text}")
+                
         except Exception as e:
             st.error(f"Error loading submission data: {e}")
             st.info("This might be due to data format issues. Please try refreshing or selecting a different submission.")
