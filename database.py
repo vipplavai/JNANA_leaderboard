@@ -1,40 +1,31 @@
 
 """
-Database operations for MongoDB connection and reference data handling
+Database management for the JNANA QA Leaderboard
 """
-import json
 import streamlit as st
+import json
 from pymongo import MongoClient
-from typing import Dict, Tuple, Optional
+from typing import Dict, List
 
 class DatabaseManager:
     def __init__(self):
-        self.client = None
-        self.db = None
-        self.ref_collection = None
-        self.submissions_collection = None
-        self.mongodb_available = False
-        self._setup_connection()
-    
-    def _setup_connection(self):
-        """Setup MongoDB connection with fallback"""
         try:
-            mongo_uri = st.secrets.get("mongo_uri", "mongodb://localhost:27017")
-            self.client = MongoClient(mongo_uri, serverSelectionTimeoutMS=5000)
-            # Test the connection
+            MONGO_URI = st.secrets.get("mongo_uri", "mongodb://localhost:27017")
+            self.client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
             self.client.admin.command('ping')
             self.db = self.client["Leaderboard"]
             self.ref_collection = self.db["reference_samples"]
             self.submissions_collection = self.db["submissions"]
             self.mongodb_available = True
-            st.success("✅ MongoDB connected successfully")
         except Exception as e:
             st.warning(f"⚠️ MongoDB connection failed: {e}")
             st.info("📝 Running in local mode - submissions will not be saved")
             self.mongodb_available = False
+            self.ref_collection = None
+            self.submissions_collection = None
     
     def get_reference_data(self) -> Dict:
-        """Load and return reference data lookup dictionary"""
+        """Load and cache reference data from MongoDB or local file"""
         if self.mongodb_available and self.ref_collection is not None:
             try:
                 # Try to load from MongoDB first
@@ -55,9 +46,16 @@ class DatabaseManager:
                 st.warning(f"⚠️ MongoDB error, falling back to local file: {e}")
         
         # Fallback to local file
-        return self._load_local_reference_data()
+        try:
+            with open("data/samples_1000.json", "r", encoding="utf-8") as f:
+                ref_data = json.load(f)
+            
+            return self._create_lookup_dict(ref_data)
+        except Exception as e:
+            st.error(f"❌ Error loading reference data: {e}")
+            return {}
     
-    def _create_lookup_dict(self, ref_data) -> Dict:
+    def _create_lookup_dict(self, ref_data: List[Dict]) -> Dict:
         """Create optimized lookup dictionary from reference data"""
         lookup_dict = {}
         for item in ref_data:
@@ -69,16 +67,6 @@ class DatabaseManager:
             except (ValueError, TypeError):
                 continue  # Skip malformed entries
         return lookup_dict
-    
-    def _load_local_reference_data(self) -> Dict:
-        """Load reference data from local file"""
-        try:
-            with open("data/samples_1000.json", "r", encoding="utf-8") as f:
-                ref_data = json.load(f)
-            return self._create_lookup_dict(ref_data)
-        except Exception as e:
-            st.error(f"❌ Error loading reference data: {e}")
-            return {}
     
     def save_submission(self, submission_data: Dict) -> bool:
         """Save submission to database"""
@@ -93,7 +81,7 @@ class DatabaseManager:
             st.error(f"❌ Error saving submission: {e}")
             return False
     
-    def load_submissions(self) -> list:
+    def load_submissions(self) -> List[Dict]:
         """Load all submissions from database"""
         if not self.mongodb_available:
             return []
