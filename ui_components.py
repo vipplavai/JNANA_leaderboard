@@ -49,6 +49,28 @@ class UIComponents:
 
     @staticmethod
     def render_submission_form():
+        # Initialize sidebar visibility state
+        if 'sidebar_visible' not in st.session_state:
+            st.session_state.sidebar_visible = True
+
+        # Add toggle button in main area
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            if st.session_state.sidebar_visible:
+                button_text = "🔽 Hide Submission Panel"
+                button_help = "Click to hide the submission form"
+            else:
+                button_text = "🔼 Show Submission Panel"
+                button_help = "Click to show the submission form"
+            
+            if st.button(button_text, help=button_help, use_container_width=True):
+                st.session_state.sidebar_visible = not st.session_state.sidebar_visible
+                st.rerun()
+
+        # Only render sidebar content if visible
+        if not st.session_state.sidebar_visible:
+            return {"submitted": False}
+
         st.sidebar.header("📤 Submit Your Results")
 
         # Instructions in sidebar
@@ -229,7 +251,7 @@ class UIComponents:
             if st.checkbox("📖 Show Context", key=f"context_{sample_idx}"):
                 context = UIComponents._get_context(row["content_id"], row["qa_index"], ref_lookup)
                 if context and context != "[Context not available]":
-                    st.text_area("📄 Source Context", context, height=700, key=f"context_text_{sample_idx}")
+                    st.text_area("📄 Source Context", context, height=200, key=f"context_text_{sample_idx}")
                 else:
                     st.warning("⚠️ Context not available for this sample")
 
