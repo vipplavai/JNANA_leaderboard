@@ -104,12 +104,21 @@ def get_ref_lookup():
                 
                 # Insert into MongoDB for future use
                 ref_collection.insert_many(ref_data)
-                st.info("✅ Loaded 1000 reference samples into MongoDB")
+                st.success("✅ Populated 1000 reference samples into MongoDB")
             
-            return {
-                (item["content_id"], item["qa_index"]): item.get("content_text", "")
-                for item in ref_data
-            }
+            # Create optimized lookup dictionary
+            lookup_dict = {}
+            for item in ref_data:
+                try:
+                    content_id = int(item.get("content_id", 0))
+                    qa_index = int(item.get("qa_index", 0))
+                    content_text = item.get("content_text", "")
+                    lookup_dict[(content_id, qa_index)] = content_text
+                except (ValueError, TypeError):
+                    continue  # Skip malformed entries
+            
+            return lookup_dict
+            
         except Exception as e:
             st.warning(f"⚠️ MongoDB error, falling back to local file: {e}")
     
@@ -117,8 +126,6 @@ def get_ref_lookup():
     try:
         with open("data/samples_1000.json", "r", encoding="utf-8") as f:
             ref_data = json.load(f)
-        if not MONGODB_AVAILABLE:
-            st.info("📂 Using local reference data")
         
         # Create lookup with proper error handling
         lookup_dict = {}
@@ -128,7 +135,7 @@ def get_ref_lookup():
                 qa_index = int(item.get("qa_index", 0))
                 content_text = item.get("content_text", "")
                 lookup_dict[(content_id, qa_index)] = content_text
-            except (ValueError, TypeError) as e:
+            except (ValueError, TypeError):
                 continue  # Skip malformed entries
                 
         return lookup_dict
@@ -136,13 +143,14 @@ def get_ref_lookup():
         st.error(f"❌ Error loading reference data: {local_e}")
         return {}
 
+# Initialize reference lookup
 ref_lookup = get_ref_lookup()
 
-# Debug info for reference data
+# Show reference data status
 if ref_lookup:
-    st.info(f"📚 Loaded {len(ref_lookup)} reference samples for context lookup")
+    st.sidebar.success(f"📚 {len(ref_lookup)} reference samples loaded")
 else:
-    st.warning("⚠️ No reference data available - contexts will show as '[context not available]'")
+    st.sidebar.error("⚠️ No reference data available")
 
 # ---------------------------
 # Upload Submission
@@ -210,7 +218,8 @@ if uploaded_file and "uploaded" not in st.session_state:
 # Load Submissions from MongoDB
 # ---------------------------
 @st.cache_data(ttl=60)  # Cache for 60 seconds to reduce MongoDB calls
-def load_submissions():
+def load_submissions(_ref_lookup):
+    """Load submissions and ensure they all have proper context"""
     try:
         submissions = list(submissions_collection.find({}).sort("timestamp", -1))  # Sort by newest first
         leaderboard_rows, all_data = [], {}
@@ -219,12 +228,16 @@ def load_submissions():
             df = pd.DataFrame(sub["results"])
             df["breakdown"] = df["type"]
             
-            # Ensure content_text is added for all submissions
-            if "content_text" not in df.columns or df["content_text"].isna().any():
-                df["content_text"] = df.apply(
-                    lambda row: ref_lookup.get((row["content_id"], row["qa_index"]), "[context not available]"),
-                    axis=1
-                )
+            # Always ensure content_text is properly added using reference lookup
+            df["content_text"] = df.apply(
+                lambda row: _ref_lookup.get((row["content_id"], row["qa_index"]), "[context not available]"),
+                axis=1
+            )
+            
+            # Verify context coverage
+            missing_context = (df["content_text"] == "[context not available]").sum()
+            if missing_context > 0:
+                st.warning(f"⚠️ {missing_context} samples missing context in {sub.get('model', 'Unknown')} submission")
             
             # Create a readable submission identifier
             model_name = sub.get("model", "Unknown")
@@ -264,7 +277,7 @@ def load_submissions():
         st.error(f"Error loading submissions from MongoDB: {e}")
         return [], {}
 
-leaderboard_rows, all_data = load_submissions()
+leaderboard_rows, all_data = load_submissions(ref_lookup)
 
 # ---------------------------
 # Leaderboard
