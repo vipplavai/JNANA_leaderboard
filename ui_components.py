@@ -259,7 +259,7 @@ class UIComponents:
             if st.checkbox("📖 Show Context", key=f"context_{sample_idx}"):
                 context = UIComponents._get_context(row["content_id"], row["qa_index"], ref_lookup)
                 if context and context != "[Context not available]":
-                    st.text_area("📄 Source Context", context, height=200, key=f"context_text_{sample_idx}")
+                    st.text_area("📄 Source Context", context, height=700, key=f"context_text_{sample_idx}")
                 else:
                     st.warning("⚠️ Context not available for this sample")
 
