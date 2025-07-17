@@ -1,10 +1,11 @@
+
 import streamlit as st
 import pandas as pd
 import json
 from datetime import datetime
 from pymongo import MongoClient
 from typing import List, Dict
-from validate import clean_and_validate_submission
+
 
 # ---------------------------
 # Metric Computation
@@ -76,14 +77,46 @@ This leaderboard evaluates Telugu short-answer question-answering models using a
 """)
 
 # ---------------------------
+# Reference Data Population
+# ---------------------------
+def populate_reference_data():
+    """Populate MongoDB with reference data if not already present"""
+    try:
+        # Check if reference data exists
+        ref_count = ref_collection.count_documents({})
+        if ref_count == 0:
+            # Load from local file
+            with open("data/samples_1000.json", "r", encoding="utf-8") as f:
+                ref_data = json.load(f)
+            
+            # Insert into MongoDB
+            ref_collection.insert_many(ref_data)
+            st.success(f"✅ Populated {len(ref_data)} reference samples into MongoDB")
+            return True
+        else:
+            return False
+    except Exception as e:
+        st.error(f"❌ Error populating reference data: {e}")
+        return False
+
+# ---------------------------
 # Reference Cache
 # ---------------------------
 @st.cache_data
 def get_ref_lookup():
-    return {
-        (item["content_id"], item["qa_index"]): item.get("content_text", "")
-        for item in ref_collection.find({})
-    }
+    try:
+        # Check if we need to populate reference data
+        ref_count = ref_collection.count_documents({})
+        if ref_count == 0:
+            populate_reference_data()
+        
+        return {
+            (item["content_id"], item["qa_index"]): item.get("content_text", "")
+            for item in ref_collection.find({})
+        }
+    except Exception as e:
+        st.error(f"Error loading reference data: {e}")
+        return {}
 
 ref_lookup = get_ref_lookup()
 
@@ -91,6 +124,16 @@ ref_lookup = get_ref_lookup()
 # Upload Submission
 # ---------------------------
 st.sidebar.header("📥 Submit Your Model Output")
+
+# Add reference data status and refresh button
+ref_count = ref_collection.count_documents({})
+st.sidebar.info(f"📚 Reference samples in DB: {ref_count}")
+if st.sidebar.button("🔄 Refresh Reference Data"):
+    ref_collection.delete_many({})  # Clear existing
+    if populate_reference_data():
+        st.rerun()
+
+st.sidebar.markdown("---")
 model_name = st.sidebar.text_input("Model Name (required)")
 author_name = st.sidebar.text_input("Your Name or Alias (required)")
 version_tag = st.sidebar.text_input("Version Tag (optional)", placeholder="v1.0")
@@ -137,10 +180,13 @@ if uploaded_file and "uploaded" not in st.session_state:
                             "metrics": metrics,
                             "results": cleaned_data
                         }
-                        submissions_collection.insert_one(meta)
-                        st.session_state["uploaded"] = True
-                        st.sidebar.success("✅ Submission uploaded successfully!")
-                        st.rerun()
+                        try:
+                            submissions_collection.insert_one(meta)
+                            st.session_state["uploaded"] = True
+                            st.sidebar.success("✅ Submission uploaded successfully!")
+                            st.rerun()
+                        except Exception as e:
+                            st.sidebar.error(f"❌ MongoDB error: {str(e)}")
         except json.JSONDecodeError:
             st.sidebar.error("❌ Invalid JSON format.")
         except Exception as e:
@@ -151,51 +197,55 @@ if uploaded_file and "uploaded" not in st.session_state:
 # ---------------------------
 @st.cache_data(ttl=60)  # Cache for 60 seconds to reduce MongoDB calls
 def load_submissions():
-    submissions = list(submissions_collection.find({}).sort("timestamp", -1))  # Sort by newest first
-    leaderboard_rows, all_data = [], {}
-    
-    for sub in submissions:
-        df = pd.DataFrame(sub["results"])
-        df["breakdown"] = df["type"]
-        df["content_text"] = df.apply(
-            lambda row: ref_lookup.get((row["content_id"], row["qa_index"]), "[context not available]"),
-            axis=1
-        )
+    try:
+        submissions = list(submissions_collection.find({}).sort("timestamp", -1))  # Sort by newest first
+        leaderboard_rows, all_data = [], {}
         
-        # Create a readable submission identifier
-        model_name = sub.get("model", "Unknown")
-        author_name = sub.get("author", "Unknown")
-        version_tag = sub.get("version_tag", "")
-        timestamp = sub["timestamp"].strftime("%Y-%m-%d %H:%M")
+        for sub in submissions:
+            df = pd.DataFrame(sub["results"])
+            df["breakdown"] = df["type"]
+            df["content_text"] = df.apply(
+                lambda row: ref_lookup.get((row["content_id"], row["qa_index"]), "[context not available]"),
+                axis=1
+            )
+            
+            # Create a readable submission identifier
+            model_name = sub.get("model", "Unknown")
+            author_name = sub.get("author", "Unknown")
+            version_tag = sub.get("version_tag", "")
+            timestamp = sub["timestamp"].strftime("%Y-%m-%d %H:%M")
+            
+            # Create display name for dropdown with proper model name formatting
+            display_name = f"🤖 {model_name}"
+            if version_tag:
+                display_name += f" v{version_tag}"
+            display_name += f" | 👤 {author_name} | 📅 {timestamp}"
+            
+            all_data[display_name] = {
+                "data": df,
+                "metadata": sub
+            }
+            
+            m = sub.get("metrics", {})
+            leaderboard_rows.append({
+                "Model": model_name,
+                "Author": author_name,
+                "Version": version_tag if version_tag else "N/A",
+                "Samples": m.get("total", len(df)),
+                "EM (%)": m.get("em", 0.0),
+                "F1 (%)": m.get("f1", 0.0),
+                "Answered (%)": m.get("answered", 0.0),
+                "Hallucinated (%)": m.get("hallucinated", 0.0),
+                "Faithful Correct (%)": m.get("faithful_correct", 0.0),
+                "Faithful Incorrect (%)": m.get("faithful_incorrect", 0.0),
+                "Empty (%)": m.get("empty", 0.0),
+                "Timestamp": timestamp
+            })
         
-        # Create display name for dropdown with proper model name formatting
-        display_name = f"🤖 {model_name}"
-        if version_tag:
-            display_name += f" v{version_tag}"
-        display_name += f" | 👤 {author_name} | 📅 {timestamp}"
-        
-        all_data[display_name] = {
-            "data": df,
-            "metadata": sub
-        }
-        
-        m = sub.get("metrics", {})
-        leaderboard_rows.append({
-            "Model": model_name,
-            "Author": author_name,
-            "Version": version_tag if version_tag else "N/A",
-            "Samples": m.get("total", 1000),
-            "EM (%)": m.get("em", 0.0),
-            "F1 (%)": m.get("f1", 0.0),
-            "Answered (%)": m.get("answered", 0.0),
-            "Hallucinated (%)": m.get("hallucinated", 0.0),
-            "Faithful Correct (%)": m.get("faithful_correct", 0.0),
-            "Faithful Incorrect (%)": m.get("faithful_incorrect", 0.0),
-            "Empty (%)": m.get("empty", 0.0),
-            "Timestamp": timestamp
-        })
-    
-    return leaderboard_rows, all_data
+        return leaderboard_rows, all_data
+    except Exception as e:
+        st.error(f"Error loading submissions from MongoDB: {e}")
+        return [], {}
 
 leaderboard_rows, all_data = load_submissions()
 
@@ -210,15 +260,18 @@ if leaderboard_rows:
     
     if show_advanced:
         # Get fresh submissions data for advanced metrics
-        submissions = list(submissions_collection.find({}).sort("timestamp", -1))
-        for i, sub in enumerate(submissions):
-            if i < len(leaderboard_df):
-                m = sub.get("metrics", {})
-                leaderboard_df.loc[i, "FAA (%)"] = m.get("faa", 0.0)
-                leaderboard_df.loc[i, "F1-EM Gap"] = m.get("f1_em_gap", 0.0)
-                leaderboard_df.loc[i, "Overconfident EM (%)"] = m.get("overconfident_em", 0.0)
-                leaderboard_df.loc[i, "Robust Answer Rate (%)"] = m.get("robust_answer_rate", 0.0)
-                leaderboard_df.loc[i, "Avg Answer Length"] = m.get("avg_answer_length", 0.0)
+        try:
+            submissions = list(submissions_collection.find({}).sort("timestamp", -1))
+            for i, sub in enumerate(submissions):
+                if i < len(leaderboard_df):
+                    m = sub.get("metrics", {})
+                    leaderboard_df.loc[i, "FAA (%)"] = m.get("faa", 0.0)
+                    leaderboard_df.loc[i, "F1-EM Gap"] = m.get("f1_em_gap", 0.0)
+                    leaderboard_df.loc[i, "Overconfident EM (%)"] = m.get("overconfident_em", 0.0)
+                    leaderboard_df.loc[i, "Robust Answer Rate (%)"] = m.get("robust_answer_rate", 0.0)
+                    leaderboard_df.loc[i, "Avg Answer Length"] = m.get("avg_answer_length", 0.0)
+        except Exception as e:
+            st.warning(f"Could not load advanced metrics: {e}")
     
     st.dataframe(leaderboard_df, use_container_width=True)
 else:
