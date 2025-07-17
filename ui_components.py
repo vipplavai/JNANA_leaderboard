@@ -54,7 +54,7 @@ class UIComponents:
             st.session_state.sidebar_visible = True
 
         # Add toggle button in upper left corner
-        col1, col2 = st.columns([5, 1])
+        col1, col2 = st.columns([3, 1])
         with col1:
             if st.session_state.sidebar_visible:
                 button_text = "🔽 Hide Panel"
