@@ -51,11 +51,21 @@ def compute_metrics(data: List[Dict]) -> Dict:
 # ---------------------------
 # MongoDB Setup
 # ---------------------------
-MONGO_URI = st.secrets["mongo_uri"] if "mongo_uri" in st.secrets else "mongodb://localhost:27017"
-client = MongoClient(MONGO_URI)
-db = client["Leaderboard"]
-ref_collection = db["reference_samples"]
-submissions_collection = db["submissions"]
+try:
+    MONGO_URI = st.secrets.get("mongo_uri", "mongodb://localhost:27017")
+    client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000)
+    # Test the connection
+    client.admin.command('ping')
+    db = client["Leaderboard"]
+    ref_collection = db["reference_samples"]
+    submissions_collection = db["submissions"]
+    MONGODB_AVAILABLE = True
+except Exception as e:
+    st.warning(f"⚠️ MongoDB connection failed: {e}")
+    st.info("📝 Running in local mode - submissions will not be saved")
+    MONGODB_AVAILABLE = False
+    ref_collection = None
+    submissions_collection = None
 
 # ---------------------------
 # Streamlit UI Config
@@ -82,36 +92,40 @@ This leaderboard evaluates Telugu short-answer question-answering models using a
 @st.cache_data(ttl=3600)  # Cache for 1 hour since reference data doesn't change
 def get_ref_lookup():
     """Load and cache reference data from MongoDB or local file"""
-    try:
-        # Try to load from MongoDB first
-        ref_data = list(ref_collection.find({}))
-        
-        # If MongoDB is empty, populate from local file
-        if not ref_data:
-            with open("data/samples_1000.json", "r", encoding="utf-8") as f:
-                ref_data = json.load(f)
-            
-            # Insert into MongoDB for future use
-            ref_collection.insert_many(ref_data)
-            st.info("✅ Loaded 1000 reference samples into MongoDB")
-        
-        return {
-            (item["content_id"], item["qa_index"]): item.get("content_text", "")
-            for item in ref_data
-        }
-    except Exception as e:
-        # Fallback to local file if MongoDB fails
+    if MONGODB_AVAILABLE and ref_collection is not None:
         try:
-            with open("data/samples_1000.json", "r", encoding="utf-8") as f:
-                ref_data = json.load(f)
-            st.warning(f"⚠️ Using local reference data (MongoDB error: {e})")
+            # Try to load from MongoDB first
+            ref_data = list(ref_collection.find({}))
+            
+            # If MongoDB is empty, populate from local file
+            if not ref_data:
+                with open("data/samples_1000.json", "r", encoding="utf-8") as f:
+                    ref_data = json.load(f)
+                
+                # Insert into MongoDB for future use
+                ref_collection.insert_many(ref_data)
+                st.info("✅ Loaded 1000 reference samples into MongoDB")
+            
             return {
                 (item["content_id"], item["qa_index"]): item.get("content_text", "")
                 for item in ref_data
             }
-        except Exception as local_e:
-            st.error(f"❌ Error loading reference data: {local_e}")
-            return {}
+        except Exception as e:
+            st.warning(f"⚠️ MongoDB error, falling back to local file: {e}")
+    
+    # Fallback to local file
+    try:
+        with open("data/samples_1000.json", "r", encoding="utf-8") as f:
+            ref_data = json.load(f)
+        if not MONGODB_AVAILABLE:
+            st.info("📂 Using local reference data")
+        return {
+            (item["content_id"], item["qa_index"]): item.get("content_text", "")
+            for item in ref_data
+        }
+    except Exception as local_e:
+        st.error(f"❌ Error loading reference data: {local_e}")
+        return {}
 
 ref_lookup = get_ref_lookup()
 
