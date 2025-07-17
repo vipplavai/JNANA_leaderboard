@@ -84,8 +84,8 @@ class UIComponents:
 
     @staticmethod
     def render_metrics_explanation():
-        # Direct to GitHub for metrics info
-        st.info("📊 **Understanding Metrics**: Visit our [GitHub Documentation](https://github.com/vipplavai/JNANA_leaderboard) for detailed metric explanations.")
+        # Simple metrics info
+        st.info("📊 **Understanding Metrics**: Detailed explanations of all metrics are available in our documentation.")
 
     @staticmethod
     def render_leaderboard(leaderboard_rows):
@@ -123,8 +123,8 @@ class UIComponents:
     def render_sample_explorer(all_data, ref_lookup):
         st.header("🔍 Sample Explorer")
 
-        # Simple info box for GitHub
-        st.info("ℹ️ **Sample Explorer Guide**: For detailed usage instructions, visit our [GitHub Documentation](https://github.com/vipplavai/JNANA_leaderboard)")
+        # Simple info box
+        st.info("ℹ️ **Sample Explorer**: Browse through individual model predictions and analyze performance patterns.")
 
         if all_data:
             # Dynamic submission selector
