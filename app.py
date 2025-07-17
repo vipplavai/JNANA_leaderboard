@@ -217,8 +217,7 @@ if uploaded_file and "uploaded" not in st.session_state:
 # ---------------------------
 # Load Submissions from MongoDB
 # ---------------------------
-@st.cache_data(ttl=60)  # Cache for 60 seconds to reduce MongoDB calls
-def load_submissions(_ref_lookup):
+def load_submissions():
     """Load submissions and ensure they all have proper context"""
     try:
         submissions = list(submissions_collection.find({}).sort("timestamp", -1))  # Sort by newest first
@@ -230,14 +229,14 @@ def load_submissions(_ref_lookup):
             
             # Always ensure content_text is properly added using reference lookup
             df["content_text"] = df.apply(
-                lambda row: _ref_lookup.get((row["content_id"], row["qa_index"]), "[context not available]"),
+                lambda row: ref_lookup.get((row["content_id"], row["qa_index"]), "[context not available]"),
                 axis=1
             )
             
-            # Verify context coverage
+            # Verify context coverage for debugging
             missing_context = (df["content_text"] == "[context not available]").sum()
-            if missing_context > 0:
-                st.warning(f"⚠️ {missing_context} samples missing context in {sub.get('model', 'Unknown')} submission")
+            total_samples = len(df)
+            context_coverage = ((total_samples - missing_context) / total_samples * 100) if total_samples > 0 else 0
             
             # Create a readable submission identifier
             model_name = sub.get("model", "Unknown")
@@ -253,7 +252,8 @@ def load_submissions(_ref_lookup):
             
             all_data[display_name] = {
                 "data": df,
-                "metadata": sub
+                "metadata": sub,
+                "context_coverage": context_coverage
             }
             
             m = sub.get("metrics", {})
@@ -277,7 +277,8 @@ def load_submissions(_ref_lookup):
         st.error(f"Error loading submissions from MongoDB: {e}")
         return [], {}
 
-leaderboard_rows, all_data = load_submissions(ref_lookup)
+# Load submissions data fresh each time to ensure proper context loading
+leaderboard_rows, all_data = load_submissions()
 
 # ---------------------------
 # Leaderboard
@@ -332,13 +333,16 @@ if all_data:
         metadata = submission_info["metadata"]
         
         # Show submission metadata
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.metric("Total Samples", len(df))
         with col2:
             st.metric("EM Score", f"{metadata.get('metrics', {}).get('em', 0):.1f}%")
         with col3:
             st.metric("F1 Score", f"{metadata.get('metrics', {}).get('f1', 0):.1f}%")
+        with col4:
+            context_coverage = submission_info.get('context_coverage', 0)
+            st.metric("Context Coverage", f"{context_coverage:.1f}%")
         
         # Add notes if available
         if metadata.get("notes"):
