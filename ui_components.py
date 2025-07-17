@@ -139,13 +139,29 @@ class UIComponents:
                 
                 # Display context in an expandable section
                 with st.expander("📖 View Context", expanded=True):
-                    if context_text and context_text != "[Context not available]":
+                    if context_text and context_text not in ["[Context not available]", "[Empty context]"]:
                         st.text_area("Context Text", value=context_text, height=200, disabled=True)
                     else:
                         st.warning(f"⚠️ Context not found for content_id: {row['content_id']}, qa_index: {row['qa_index']}")
-                        st.info("Available reference data keys (first 10):")
-                        sample_keys = list(ref_lookup.keys())[:10]
-                        st.write(sample_keys)
+                        
+                        # More detailed debugging
+                        lookup_key = (int(row['content_id']), int(row['qa_index']))
+                        st.code(f"Looking for key: {lookup_key}")
+                        
+                        if len(ref_lookup) > 0:
+                            st.info("Sample of available reference data keys:")
+                            sample_keys = list(ref_lookup.keys())[:10]
+                            for key in sample_keys:
+                                st.code(f"  {key}")
+                            
+                            # Check if there are any keys with same content_id
+                            matching_content_id = [k for k in ref_lookup.keys() if k[0] == int(row['content_id'])]
+                            if matching_content_id:
+                                st.info(f"Found {len(matching_content_id)} entries with content_id {row['content_id']}:")
+                                for key in matching_content_id[:5]:  # Show first 5
+                                    st.code(f"  {key}")
+                        else:
+                            st.error("❌ Reference lookup dictionary is empty!")
 
         except Exception as e:
             st.error(f"Error displaying submission details: {e}")

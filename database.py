@@ -30,15 +30,18 @@ class DatabaseManager:
             try:
                 # Try to load from MongoDB first
                 ref_data = list(self.ref_collection.find({}))
+                st.info(f"📥 Loaded {len(ref_data)} documents from MongoDB")
                 
                 # If MongoDB is empty, populate from local file
                 if not ref_data:
+                    st.info("📁 MongoDB empty, loading from local file...")
                     with open("data/samples_1000.json", "r", encoding="utf-8") as f:
                         ref_data = json.load(f)
                     
                     # Insert into MongoDB for future use
-                    self.ref_collection.insert_many(ref_data)
-                    st.success("✅ Populated 1000 reference samples into MongoDB")
+                    if ref_data:
+                        self.ref_collection.insert_many(ref_data)
+                        st.success("✅ Populated reference samples into MongoDB")
                 
                 return self._create_lookup_dict(ref_data)
                 
@@ -47,6 +50,7 @@ class DatabaseManager:
         
         # Fallback to local file
         try:
+            st.info("📁 Loading reference data from local file...")
             with open("data/samples_1000.json", "r", encoding="utf-8") as f:
                 ref_data = json.load(f)
             
@@ -62,15 +66,20 @@ class DatabaseManager:
         
         for item in ref_data:
             try:
+                # Handle MongoDB ObjectId conversion
+                if "_id" in item and isinstance(item["_id"], dict) and "$oid" in item["_id"]:
+                    # MongoDB format - no conversion needed for _id
+                    pass
+                
                 content_id = int(item.get("content_id", 0))
                 qa_index = int(item.get("qa_index", 0))
                 content_text = item.get("content_text", "")
                 
-                if content_text.strip():  # Only add non-empty contexts
-                    lookup_dict[(content_id, qa_index)] = content_text
+                if content_text and content_text.strip():  # Only add non-empty contexts
+                    lookup_dict[(content_id, qa_index)] = content_text.strip()
                 else:
                     skipped_count += 1
-            except (ValueError, TypeError):
+            except (ValueError, TypeError) as e:
                 skipped_count += 1
                 continue  # Skip malformed entries
         
