@@ -58,14 +58,26 @@ class DatabaseManager:
     def _create_lookup_dict(self, ref_data: List[Dict]) -> Dict:
         """Create optimized lookup dictionary from reference data"""
         lookup_dict = {}
+        skipped_count = 0
+        
         for item in ref_data:
             try:
                 content_id = int(item.get("content_id", 0))
                 qa_index = int(item.get("qa_index", 0))
                 content_text = item.get("content_text", "")
-                lookup_dict[(content_id, qa_index)] = content_text
+                
+                if content_text.strip():  # Only add non-empty contexts
+                    lookup_dict[(content_id, qa_index)] = content_text
+                else:
+                    skipped_count += 1
             except (ValueError, TypeError):
+                skipped_count += 1
                 continue  # Skip malformed entries
+        
+        if skipped_count > 0:
+            st.warning(f"⚠️ Skipped {skipped_count} entries with missing/invalid data")
+            
+        st.info(f"📚 Created lookup dictionary with {len(lookup_dict)} valid entries")
         return lookup_dict
     
     def save_submission(self, submission_data: Dict) -> bool:

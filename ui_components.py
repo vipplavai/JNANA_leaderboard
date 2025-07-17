@@ -89,6 +89,12 @@ class UIComponents:
             metadata = submission_info["metadata"]
 
             st.info(f"📊 Processing {len(df)} samples from selected submission...")
+            
+            # Debug info
+            if len(ref_lookup) > 0:
+                st.success(f"✅ Reference lookup contains {len(ref_lookup)} entries")
+            else:
+                st.error("❌ Reference lookup is empty!")
 
             # Calculate context coverage
             context_coverage = UIComponents._calculate_context_coverage(df, ref_lookup)
@@ -130,8 +136,16 @@ class UIComponents:
                 st.markdown(f"**Prediction**: {row['prediction']}")
                 st.markdown(f"**F1**: {row['f1_score']:.2f} | EM: {row['exact_match']} | Hallucinated: {row['hallucinated']}")
                 st.markdown(f"**Type**: {row['breakdown']}")
-                st.markdown("---")
-                st.markdown(f"**Context**:\n\n{context_text}")
+                
+                # Display context in an expandable section
+                with st.expander("📖 View Context", expanded=True):
+                    if context_text and context_text != "[Context not available]":
+                        st.text_area("Context Text", value=context_text, height=200, disabled=True)
+                    else:
+                        st.warning(f"⚠️ Context not found for content_id: {row['content_id']}, qa_index: {row['qa_index']}")
+                        st.info("Available reference data keys (first 10):")
+                        sample_keys = list(ref_lookup.keys())[:10]
+                        st.write(sample_keys)
 
         except Exception as e:
             st.error(f"Error displaying submission details: {e}")
@@ -155,6 +169,13 @@ class UIComponents:
         """Get context for a specific sample"""
         try:
             key = (int(content_id), int(qa_index))
-            return ref_lookup.get(key, "[Context not available]")
+            context = ref_lookup.get(key, None)
+            
+            if context is None:
+                return "[Context not available]"
+            elif context.strip() == "":
+                return "[Empty context]"
+            else:
+                return context.strip()
         except Exception as e:
             return f"[Error loading context: {e}]"
