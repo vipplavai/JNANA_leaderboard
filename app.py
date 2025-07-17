@@ -119,15 +119,30 @@ def get_ref_lookup():
             ref_data = json.load(f)
         if not MONGODB_AVAILABLE:
             st.info("📂 Using local reference data")
-        return {
-            (item["content_id"], item["qa_index"]): item.get("content_text", "")
-            for item in ref_data
-        }
+        
+        # Create lookup with proper error handling
+        lookup_dict = {}
+        for item in ref_data:
+            try:
+                content_id = int(item.get("content_id", 0))
+                qa_index = int(item.get("qa_index", 0))
+                content_text = item.get("content_text", "")
+                lookup_dict[(content_id, qa_index)] = content_text
+            except (ValueError, TypeError) as e:
+                continue  # Skip malformed entries
+                
+        return lookup_dict
     except Exception as local_e:
         st.error(f"❌ Error loading reference data: {local_e}")
         return {}
 
 ref_lookup = get_ref_lookup()
+
+# Debug info for reference data
+if ref_lookup:
+    st.info(f"📚 Loaded {len(ref_lookup)} reference samples for context lookup")
+else:
+    st.warning("⚠️ No reference data available - contexts will show as '[context not available]'")
 
 # ---------------------------
 # Upload Submission
@@ -203,10 +218,13 @@ def load_submissions():
         for sub in submissions:
             df = pd.DataFrame(sub["results"])
             df["breakdown"] = df["type"]
-            df["content_text"] = df.apply(
-                lambda row: ref_lookup.get((row["content_id"], row["qa_index"]), "[context not available]"),
-                axis=1
-            )
+            
+            # Ensure content_text is added for all submissions
+            if "content_text" not in df.columns or df["content_text"].isna().any():
+                df["content_text"] = df.apply(
+                    lambda row: ref_lookup.get((row["content_id"], row["qa_index"]), "[context not available]"),
+                    axis=1
+                )
             
             # Create a readable submission identifier
             model_name = sub.get("model", "Unknown")
