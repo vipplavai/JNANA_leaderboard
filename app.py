@@ -218,23 +218,29 @@ if uploaded_file and "uploaded" not in st.session_state:
 # Load Submissions from MongoDB
 # ---------------------------
 def load_submissions():
-    """Load submissions without trying to embed context - context will be loaded separately"""
+    """Load submissions from MongoDB"""
+    if not MONGODB_AVAILABLE or submissions_collection is None:
+        return [], {}
+    
     try:
-        submissions = list(submissions_collection.find({}).sort("timestamp", -1))  # Sort by newest first
+        submissions = list(submissions_collection.find({}).sort("timestamp", -1))
         leaderboard_rows, all_data = [], {}
         
         for sub in submissions:
-            # Just load the submission data without trying to add context here
-            df = pd.DataFrame(sub["results"])
+            # Load submission results data
+            results = sub.get("results", [])
+            if not results:
+                continue
+                
+            df = pd.DataFrame(results)
             df["breakdown"] = df["type"]
             
-            # Create a readable submission identifier
+            # Create display name for dropdown
             model_name = sub.get("model", "Unknown")
             author_name = sub.get("author", "Unknown")
             version_tag = sub.get("version_tag", "")
             timestamp = sub["timestamp"].strftime("%Y-%m-%d %H:%M")
             
-            # Create display name for dropdown with proper model name formatting
             display_name = f"🤖 {model_name}"
             if version_tag:
                 display_name += f" v{version_tag}"
@@ -245,6 +251,7 @@ def load_submissions():
                 "metadata": sub
             }
             
+            # Build leaderboard row
             m = sub.get("metrics", {})
             leaderboard_rows.append({
                 "Model": model_name,
@@ -314,6 +321,16 @@ st.markdown("""
 - This is a read-only view of all submissions in the leaderboard.
 """)
 
+# Debug information
+if MONGODB_AVAILABLE:
+    try:
+        submission_count = submissions_collection.count_documents({})
+        st.info(f"📊 Found {submission_count} submissions in database")
+    except Exception as e:
+        st.error(f"Error checking submissions: {e}")
+else:
+    st.warning("⚠️ MongoDB not available - Sample Explorer disabled")
+
 if all_data:
     selected_submission = st.selectbox(
         "Choose a submission to explore", 
@@ -329,6 +346,10 @@ if all_data:
         # Load context directly from reference_samples collection for each sample
         def get_context_for_sample(content_id, qa_index):
             """Get context directly from reference_samples collection"""
+            if not MONGODB_AVAILABLE or ref_collection is None:
+                # Fallback to cached lookup if MongoDB unavailable
+                return ref_lookup.get((int(content_id), int(qa_index)), "[Context not available]")
+            
             try:
                 ref_doc = ref_collection.find_one({
                     "content_id": int(content_id),
