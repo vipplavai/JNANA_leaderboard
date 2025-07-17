@@ -77,46 +77,41 @@ This leaderboard evaluates Telugu short-answer question-answering models using a
 """)
 
 # ---------------------------
-# Reference Data Population
+# Reference Data Cache
 # ---------------------------
-def populate_reference_data():
-    """Populate MongoDB with reference data if not already present"""
+@st.cache_data(ttl=3600)  # Cache for 1 hour since reference data doesn't change
+def get_ref_lookup():
+    """Load and cache reference data from MongoDB or local file"""
     try:
-        # Check if reference data exists
-        ref_count = ref_collection.count_documents({})
-        if ref_count == 0:
-            # Load from local file
+        # Try to load from MongoDB first
+        ref_data = list(ref_collection.find({}))
+        
+        # If MongoDB is empty, populate from local file
+        if not ref_data:
             with open("data/samples_1000.json", "r", encoding="utf-8") as f:
                 ref_data = json.load(f)
             
-            # Insert into MongoDB
+            # Insert into MongoDB for future use
             ref_collection.insert_many(ref_data)
-            st.success(f"✅ Populated {len(ref_data)} reference samples into MongoDB")
-            return True
-        else:
-            return False
-    except Exception as e:
-        st.error(f"❌ Error populating reference data: {e}")
-        return False
-
-# ---------------------------
-# Reference Cache
-# ---------------------------
-@st.cache_data
-def get_ref_lookup():
-    try:
-        # Check if we need to populate reference data
-        ref_count = ref_collection.count_documents({})
-        if ref_count == 0:
-            populate_reference_data()
+            st.info("✅ Loaded 1000 reference samples into MongoDB")
         
         return {
             (item["content_id"], item["qa_index"]): item.get("content_text", "")
-            for item in ref_collection.find({})
+            for item in ref_data
         }
     except Exception as e:
-        st.error(f"Error loading reference data: {e}")
-        return {}
+        # Fallback to local file if MongoDB fails
+        try:
+            with open("data/samples_1000.json", "r", encoding="utf-8") as f:
+                ref_data = json.load(f)
+            st.warning(f"⚠️ Using local reference data (MongoDB error: {e})")
+            return {
+                (item["content_id"], item["qa_index"]): item.get("content_text", "")
+                for item in ref_data
+            }
+        except Exception as local_e:
+            st.error(f"❌ Error loading reference data: {local_e}")
+            return {}
 
 ref_lookup = get_ref_lookup()
 
@@ -124,16 +119,6 @@ ref_lookup = get_ref_lookup()
 # Upload Submission
 # ---------------------------
 st.sidebar.header("📥 Submit Your Model Output")
-
-# Add reference data status and refresh button
-ref_count = ref_collection.count_documents({})
-st.sidebar.info(f"📚 Reference samples in DB: {ref_count}")
-if st.sidebar.button("🔄 Refresh Reference Data"):
-    ref_collection.delete_many({})  # Clear existing
-    if populate_reference_data():
-        st.rerun()
-
-st.sidebar.markdown("---")
 model_name = st.sidebar.text_input("Model Name (required)")
 author_name = st.sidebar.text_input("Your Name or Alias (required)")
 version_tag = st.sidebar.text_input("Version Tag (optional)", placeholder="v1.0")
