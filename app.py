@@ -4,6 +4,7 @@ import json
 from datetime import datetime
 from pymongo import MongoClient
 from typing import List, Dict
+from validate import clean_and_validate_submission
 
 # ---------------------------
 # Metric Computation
@@ -75,18 +76,6 @@ This leaderboard evaluates Telugu short-answer question-answering models using a
 # ---------------------------
 # Reference Cache
 # ---------------------------
-<<<<<<< HEAD
-ref_cursor = ref_collection.find({})
-ref_lookup = {(item["content_id"], item["qa_index"]): item.get("content_text", "") for item in ref_cursor}
-=======
-<<<<<<< HEAD
-try:
-    ref_cursor = ref_collection.find({})
-    ref_lookup = {(item["content_id"], item["qa_index"]): item.get("content_text", "") for item in ref_cursor}
-except Exception as e:
-    st.error(f"Failed to load reference data: {e}")
-    ref_lookup = {}
-=======
 @st.cache_data
 def get_ref_lookup():
     return {
@@ -95,131 +84,71 @@ def get_ref_lookup():
     }
 
 ref_lookup = get_ref_lookup()
->>>>>>> 1a4335e (17th)
->>>>>>> a9be370 (17th)
 
 # ---------------------------
 # Upload Submission
 # ---------------------------
 st.sidebar.header("📥 Submit Your Model Output")
-model_name = st.sidebar.text_input("Model Name (optional)")
-author_name = st.sidebar.text_input("Your Name or Alias (optional)")
+model_name = st.sidebar.text_input("Model Name (required)")
+author_name = st.sidebar.text_input("Your Name or Alias (required)")
+version_tag = st.sidebar.text_input("Version Tag (optional)", placeholder="v1.0")
+notes = st.sidebar.text_area("Notes (optional)", placeholder="Brief description of your model")
 uploaded_file = st.sidebar.file_uploader("Upload result JSON file", type="json")
 
-REQUIRED_FIELDS = {
-    "content_id", "qa_index", "question", "gold_answer", "prediction",
-    "exact_match", "f1_score", "answerable", "hallucinated", "type"
-}
-
-def validate_submission(data):
-<<<<<<< HEAD
-    """Check if each record has the correct structure."""
-=======
-<<<<<<< HEAD
-    """Check if each record has the correct structure and data types."""
-=======
->>>>>>> 1a4335e (17th)
->>>>>>> a9be370 (17th)
-    errors = []
-    for i, item in enumerate(data):
-        missing = REQUIRED_FIELDS - item.keys()
-        if missing:
-            errors.append(f"❌ Record {i} missing fields: {missing}")
-        
-        # Validate data types
-        try:
-            if not isinstance(item.get("exact_match"), bool):
-                errors.append(f"❌ Record {i}: exact_match must be boolean")
-            if not isinstance(item.get("f1_score"), (int, float)):
-                errors.append(f"❌ Record {i}: f1_score must be numeric")
-            if not isinstance(item.get("answerable"), bool):
-                errors.append(f"❌ Record {i}: answerable must be boolean")
-            if not isinstance(item.get("hallucinated"), bool):
-                errors.append(f"❌ Record {i}: hallucinated must be boolean")
-        except Exception:
-            errors.append(f"❌ Record {i}: invalid data types")
-    return errors
-
 if uploaded_file and "uploaded" not in st.session_state:
-    raw_bytes = uploaded_file.read()
-    try:
-        parsed_data = json.loads(raw_bytes)
-        if not isinstance(parsed_data, list):
-            st.sidebar.error("❌ Submission file must be a list of JSON objects.")
-        else:
-            validation_errors = validate_submission(parsed_data)
-            if validation_errors:
-                st.sidebar.error("Validation failed!")
-                for err in validation_errors[:5]:
-                    st.sidebar.write(err)
-                if len(validation_errors) > 5:
-                    st.sidebar.warning(f"...and {len(validation_errors)-5} more errors")
+    if not model_name or not author_name:
+        st.sidebar.error("❌ Model name and author are required.")
+    else:
+        raw_bytes = uploaded_file.read()
+        try:
+            parsed_data = json.loads(raw_bytes)
+            if not isinstance(parsed_data, list):
+                st.sidebar.error("❌ Submission file must be a list of JSON objects.")
             else:
-<<<<<<< HEAD
-                # Save submission to MongoDB
-<<<<<<< HEAD
-                timestamp = datetime.utcnow()
-                meta = {
-                    "model": model_name or "unnamed_model",
-                    "author": author_name or "anonymous",
-                    "timestamp": timestamp,
-                    "results": parsed_data
-                }
-                submissions_collection.insert_one(meta)
-                st.sidebar.success("✅ Submission uploaded and validated successfully!")
-                st.rerun()
-=======
-                try:
-                    timestamp = datetime.utcnow()
-                    meta = {
-                        "model": model_name or "unnamed_model",
-                        "author": author_name or "anonymous",
-                        "timestamp": timestamp,
-                        "results": parsed_data
-                    }
-                    submissions_collection.insert_one(meta)
-                    st.sidebar.success("✅ Submission uploaded and validated successfully!")
-                    st.rerun()
-                except Exception as e:
-                    st.sidebar.error(f"❌ Failed to save submission: {e}")
-=======
-                metrics = compute_metrics(parsed_data)
-                meta = {
-                    "model": model_name or "unnamed_model",
-                    "author": author_name or "anonymous",
-                    "timestamp": datetime.utcnow(),
-                    "metrics": metrics,
-                    "results": parsed_data
-                }
-                submissions_collection.insert_one(meta)
-                st.session_state["uploaded"] = True
-                st.sidebar.success("✅ Submission uploaded successfully!")
-                st.rerun()
->>>>>>> 1a4335e (17th)
->>>>>>> a9be370 (17th)
-    except json.JSONDecodeError:
-        st.sidebar.error("❌ Invalid JSON format.")
+                cleaned_data, validation_errors, sha1_hash = clean_and_validate_submission(parsed_data)
+                
+                if validation_errors:
+                    st.sidebar.error("❌ Validation failed!")
+                    for err in validation_errors[:5]:
+                        st.sidebar.write(err)
+                    if len(validation_errors) > 5:
+                        st.sidebar.warning(f"...and {len(validation_errors)-5} more errors")
+                else:
+                    # Check for duplicate submission
+                    existing = submissions_collection.find_one({
+                        "model": model_name,
+                        "author": author_name,
+                        "sha1_hash": sha1_hash
+                    })
+                    
+                    if existing:
+                        st.sidebar.warning("⚠️ Identical submission already exists!")
+                    else:
+                        metrics = compute_metrics(cleaned_data)
+                        meta = {
+                            "model": model_name,
+                            "author": author_name,
+                            "timestamp": datetime.utcnow(),
+                            "version_tag": version_tag if version_tag else None,
+                            "notes": notes if notes else None,
+                            "sha1_hash": sha1_hash,
+                            "metrics": metrics,
+                            "results": cleaned_data
+                        }
+                        submissions_collection.insert_one(meta)
+                        st.session_state["uploaded"] = True
+                        st.sidebar.success("✅ Submission uploaded successfully!")
+                        st.rerun()
+        except json.JSONDecodeError:
+            st.sidebar.error("❌ Invalid JSON format.")
+        except Exception as e:
+            st.sidebar.error(f"❌ Error: {str(e)}")
 
 # ---------------------------
 # Load Submissions
 # ---------------------------
-<<<<<<< HEAD
-submissions = list(submissions_collection.find({}))
-=======
-<<<<<<< HEAD
-try:
-    submissions = list(submissions_collection.find({}))
-except Exception as e:
-    st.error(f"Failed to load submissions: {e}")
-    submissions = []
-
->>>>>>> a9be370 (17th)
-leaderboard_rows = []
-all_data = {}
-=======
 submissions = list(submissions_collection.find({}))
 leaderboard_rows, all_data = [], {}
->>>>>>> 1a4335e (17th)
 
 for sub in submissions:
     df = pd.DataFrame(sub["results"])
@@ -233,21 +162,9 @@ for sub in submissions:
     m = sub.get("metrics", {})
 
     leaderboard_rows.append({
-<<<<<<< HEAD
-        "Model": sub["model"],
-        "Author": sub["author"],
-        "Samples": len(df),
-        "EM (%)": round(df["exact_match"].mean() * 100, 2),
-        "F1 (%)": round(df["f1_score"].mean() * 100, 2),
-        "Answered (%)": round(df["answerable"].mean() * 100, 2),
-        "Hallucinated (%)": round(df["hallucinated"].mean() * 100, 2),
-        "Faithful Correct (%)": round((df["breakdown"] == "faithful_correct").mean() * 100, 2),
-        "Faithful Incorrect (%)": breakdown.get("faithful_incorrect", 0.0),
-        "Hallucinated Breakdown (%)": breakdown.get("hallucinated", 0.0),
-        "Empty (%)": breakdown.get("empty", 0.0),
-=======
         "Model": sub.get("model", "N/A"),
         "Author": sub.get("author", "N/A"),
+        "Version": sub.get("version_tag", "N/A"),
         "Samples": m.get("total", 1000),
         "EM (%)": m.get("em", 0.0),
         "F1 (%)": m.get("f1", 0.0),
@@ -256,7 +173,6 @@ for sub in submissions:
         "Faithful Correct (%)": m.get("faithful_correct", 0.0),
         "Faithful Incorrect (%)": m.get("faithful_incorrect", 0.0),
         "Empty (%)": m.get("empty", 0.0),
->>>>>>> 1a4335e (17th)
         "Timestamp": sub["timestamp"].strftime("%Y-%m-%d %H:%M")
     })
 
@@ -264,8 +180,21 @@ for sub in submissions:
 # Leaderboard
 # ---------------------------
 st.subheader("🏆 Leaderboard")
+show_advanced = st.toggle("Show Advanced Metrics", value=False)
+
 if leaderboard_rows:
     leaderboard_df = pd.DataFrame(leaderboard_rows)
+    
+    if show_advanced:
+        # Add advanced metrics columns
+        for i, sub in enumerate(submissions):
+            m = sub.get("metrics", {})
+            leaderboard_df.loc[i, "FAA (%)"] = m.get("faa", 0.0)
+            leaderboard_df.loc[i, "F1-EM Gap"] = m.get("f1_em_gap", 0.0)
+            leaderboard_df.loc[i, "Overconfident EM (%)"] = m.get("overconfident_em", 0.0)
+            leaderboard_df.loc[i, "Robust Answer Rate (%)"] = m.get("robust_answer_rate", 0.0)
+            leaderboard_df.loc[i, "Avg Answer Length"] = m.get("avg_answer_length", 0.0)
+    
     st.dataframe(leaderboard_df, use_container_width=True)
 else:
     st.info("No submissions yet.")
