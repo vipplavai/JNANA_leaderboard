@@ -332,6 +332,8 @@ else:
     st.warning("⚠️ MongoDB not available - Sample Explorer disabled")
 
 if all_data:
+    st.success(f"✅ Loaded {len(all_data)} submissions for exploration")
+    
     selected_submission = st.selectbox(
         "Choose a submission to explore", 
         ["None"] + list(all_data.keys()),
@@ -339,35 +341,41 @@ if all_data:
     )
 
     if selected_submission != "None":
-        submission_info = all_data[selected_submission]
-        df = submission_info["data"]
-        metadata = submission_info["metadata"]
+        try:
+            submission_info = all_data[selected_submission]
+            df = submission_info["data"]
+            metadata = submission_info["metadata"]
+            
+            st.info(f"📊 Processing {len(df)} samples from selected submission...")
         
         # Load context directly from reference_samples collection for each sample
         def get_context_for_sample(content_id, qa_index):
             """Get context directly from reference_samples collection"""
-            if not MONGODB_AVAILABLE or ref_collection is None:
-                # Fallback to cached lookup if MongoDB unavailable
-                return ref_lookup.get((int(content_id), int(qa_index)), "[Context not available]")
-            
             try:
-                ref_doc = ref_collection.find_one({
-                    "content_id": int(content_id),
-                    "qa_index": int(qa_index)
-                })
-                if ref_doc and ref_doc.get("content_text"):
-                    return ref_doc["content_text"]
-                else:
-                    return "[Context not available]"
+                # First try the cached lookup (fastest)
+                context = ref_lookup.get((int(content_id), int(qa_index)))
+                if context:
+                    return context
+                
+                # Fallback to MongoDB if cache miss and MongoDB available
+                if MONGODB_AVAILABLE and ref_collection is not None:
+                    ref_doc = ref_collection.find_one({
+                        "content_id": int(content_id),
+                        "qa_index": int(qa_index)
+                    })
+                    if ref_doc and ref_doc.get("content_text"):
+                        return ref_doc["content_text"]
+                
+                return "[Context not available]"
             except Exception as e:
                 return f"[Error loading context: {e}]"
         
-        # Calculate context coverage by checking actual reference collection
+        # Calculate context coverage using cached lookup (much faster)
         total_samples = len(df)
         context_available = 0
         for _, row in df.iterrows():
-            context = get_context_for_sample(row["content_id"], row["qa_index"])
-            if context != "[Context not available]" and not context.startswith("[Error"):
+            key = (int(row["content_id"]), int(row["qa_index"]))
+            if key in ref_lookup and ref_lookup[key]:
                 context_available += 1
         
         context_coverage = (context_available / total_samples * 100) if total_samples > 0 else 0
@@ -407,5 +415,26 @@ if all_data:
             st.markdown(f"**Type**: {row['breakdown']}")
             st.markdown("---")
             st.markdown(f"**Context**:\n\n{context_text}")
+            
+        except Exception as e:
+            st.error(f"Error loading submission data: {e}")
+            st.info("This might be due to data format issues. Please try refreshing or selecting a different submission.")
 else:
-    st.info("No submissions available yet. Submit your first model to see results here!")
+    if MONGODB_AVAILABLE:
+        st.warning("⚠️ No submissions loaded from database. This could be due to:")
+        st.markdown("""
+        - Empty submissions collection
+        - Database connection issues  
+        - Data format problems
+        """)
+        
+        # Show raw submission count for debugging
+        try:
+            raw_count = submissions_collection.count_documents({})
+            st.info(f"Raw submission count in database: {raw_count}")
+            if raw_count > 0:
+                st.info("There are submissions in the database but they failed to load properly. Check the error messages above.")
+        except Exception as e:
+            st.error(f"Cannot access submissions collection: {e}")
+    else:
+        st.info("No submissions available yet. Submit your first model to see results here!")
