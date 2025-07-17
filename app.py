@@ -7,8 +7,12 @@ from pymongo import MongoClient
 from typing import List, Dict
 
 # Import validation and metrics functions
-
-from metrics import compute_metrics
+try:
+    from validate import clean_and_validate_submission
+    from metrics import compute_metrics
+except ImportError as e:
+    st.error(f"Import error: {e}")
+    st.stop()
 
 # ---------------------------
 # MongoDB Setup
