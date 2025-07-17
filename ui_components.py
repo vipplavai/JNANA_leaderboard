@@ -53,14 +53,16 @@ class UIComponents:
         if 'sidebar_visible' not in st.session_state:
             st.session_state.sidebar_visible = True
 
-        # Add toggle button in main area
-        col1, col2, col3 = st.columns([1, 2, 1])
+        # Add toggle button in upper right corner
+        col1, col2 = st.columns([4, 1])
+        with col1:
+            st.empty()  # Empty space to push button to right
         with col2:
             if st.session_state.sidebar_visible:
-                button_text = "🔽 Hide Submission Panel"
+                button_text = "🔽 Hide Panel"
                 button_help = "Click to hide the submission form"
             else:
-                button_text = "🔼 Show Submission Panel"
+                button_text = "🔼 Show Panel"
                 button_help = "Click to show the submission form"
             
             if st.button(button_text, help=button_help, use_container_width=True):
