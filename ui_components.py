@@ -13,155 +13,191 @@ class UIComponents:
             page_title="JNANA QA Leaderboard", 
             layout="wide",
             initial_sidebar_state="expanded",
-            page_icon="📊"
+            page_icon="🏆"
         )
         
-        # Custom CSS for better styling
+        # Elegant, minimal CSS
         st.markdown("""
         <style>
+        /* Main styling */
         .main-header {
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            padding: 2rem;
-            border-radius: 10px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 3rem 2rem;
+            border-radius: 15px;
             color: white;
             text-align: center;
             margin-bottom: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
         }
         
-        .metric-card {
-            background: #f8f9fa;
-            padding: 1rem;
+        .hero-title {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        .hero-subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            font-weight: 300;
+        }
+        
+        /* Cards and components */
+        .elegant-card {
+            background: white;
+            border: none;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            margin: 1rem 0;
+        }
+        
+        .sample-display {
+            background: #f8f9fc;
+            border: 1px solid #e8ecf3;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 1rem 0;
+        }
+        
+        .context-viewer {
+            background: linear-gradient(145deg, #f1f3f4, #ffffff);
+            border: 1px solid #dadce0;
             border-radius: 8px;
-            border-left: 4px solid #667eea;
+            padding: 1.5rem;
+            font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+            font-size: 0.9rem;
+            line-height: 1.6;
+            color: #3c4043;
+        }
+        
+        /* Status badges */
+        .status-tag {
+            display: inline-block;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin: 0.2rem;
+        }
+        
+        .tag-excellent { background: #e8f5e8; color: #2d5a2d; }
+        .tag-good { background: #fff3cd; color: #856404; }
+        .tag-poor { background: #f8d7da; color: #721c24; }
+        .tag-neutral { background: #e2e3e5; color: #495057; }
+        
+        /* Download section */
+        .download-section {
+            background: linear-gradient(135deg, #f8f9fa, #ffffff);
+            border: 2px dashed #dee2e6;
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            margin: 2rem 0;
+        }
+        
+        .download-btn {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+            padding: 0.8rem 2rem;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-block;
+            font-weight: 600;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+        
+        .download-btn:hover {
+            transform: translateY(-2px);
+            text-decoration: none;
+            color: white;
+        }
+        
+        /* Metrics styling */
+        .metric-row {
+            background: linear-gradient(135deg, #f8f9fa, #ffffff);
+            border-radius: 10px;
+            padding: 1rem;
             margin: 0.5rem 0;
         }
         
-        .sample-card {
-            background: white;
-            border: 1px solid #e1e5e9;
-            border-radius: 8px;
-            padding: 1.5rem;
-            margin: 1rem 0;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
+        /* Hide Streamlit elements */
+        .stDeployButton { display: none; }
+        #MainMenu { visibility: hidden; }
+        footer { visibility: hidden; }
+        header { visibility: hidden; }
         
-        .context-box {
-            background: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 5px;
-            padding: 1rem;
-            font-family: monospace;
-            font-size: 0.9rem;
-            line-height: 1.4;
-        }
-        
-        .status-badge {
-            padding: 0.25rem 0.5rem;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            margin: 0.25rem;
-        }
-        
-        .badge-correct {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .badge-incorrect {
-            background: #f8d7da;
-            color: #721c24;
-        }
-        
-        .badge-hallucinated {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .badge-empty {
-            background: #e2e3e5;
-            color: #383d41;
-        }
-        
-        .download-button {
-            background: #28a745;
-            color: white;
-            padding: 0.5rem 1rem;
-            border-radius: 5px;
-            text-decoration: none;
-            display: inline-block;
-            margin: 0.5rem;
-        }
-        
-        .sidebar .stSelectbox > div > div {
-            background: #f8f9fa;
-        }
-        
-        .stMetric > div {
-            background: #f8f9fa;
-            padding: 1rem;
-            border-radius: 8px;
-            border-left: 4px solid #667eea;
-        }
+        /* Sidebar styling */
+        .css-1d391kg { padding-top: 1rem; }
         </style>
         """, unsafe_allow_html=True)
         
-        # Main header with gradient background
+        # Clean, elegant header
         st.markdown("""
         <div class="main-header">
-            <h1>📊 JNANA Telugu QA Leaderboard</h1>
-            <p style="font-size: 1.2rem; margin-top: 1rem;">
-                Evaluating Telugu Question-Answering Models with a Curated 1000-Sample Benchmark
+            <div class="hero-title">🏆 JNANA Telugu QA</div>
+            <div class="hero-subtitle">Telugu Question-Answering Model Evaluation Platform</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        # Clean download section
+        st.markdown("""
+        <div class="download-section">
+            <h3 style="margin-bottom: 1rem; color: #495057;">📥 Get Started</h3>
+            <a href="https://github.com/vipplavai/JNANA_leaderboard/blob/main/data/samples_1000.json" 
+               class="download-btn" target="_blank">
+                📊 Download Evaluation Dataset
+            </a>
+            <p style="margin-top: 1rem; color: #6c757d; font-size: 0.9rem;">
+                1000 curated Telugu QA pairs • JSON format • Ready for evaluation
             </p>
         </div>
         """, unsafe_allow_html=True)
 
-        # Info section with better formatting
-        col1, col2, col3 = st.columns([1, 2, 1])
-        with col2:
-            st.markdown("""
-            <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 2rem;">
-                <h3>🚀 Quick Start</h3>
-                <p>
-                    <a href="https://github.com/vipplavai/JNANA_leaderboard/blob/main/data/samples_1000.json" 
-                       class="download-button" target="_blank">
-                        📎 Download Evaluation Dataset
-                    </a>
-                </p>
-                <p><small>🔒 <strong>Open Leaderboard</strong>: All submissions are publicly viewable but cannot be edited or deleted to ensure leaderboard integrity.</small></p>
-            </div>
-            """, unsafe_allow_html=True)
-
-    @staticmethod
-    def render_status_info(ref_lookup, mongodb_available):
-        st.sidebar.markdown("### 📊 System Status")
-        
-        if ref_lookup:
-            st.sidebar.success(f"📚 {len(ref_lookup)} reference samples loaded")
-        else:
-            st.sidebar.error("⚠️ No reference data available")
-        
-        if mongodb_available:
-            st.sidebar.success("🔗 MongoDB connected")
-        else:
-            st.sidebar.warning("💾 Local mode (no persistence)")
-
     @staticmethod
     def render_submission_form():
-        st.sidebar.markdown("### 📥 Submit Your Model Output")
+        st.sidebar.markdown("""
+        <div style="text-align: center; padding: 1rem 0; border-bottom: 1px solid #e1e5e9; margin-bottom: 1.5rem;">
+            <h3 style="color: #495057; margin: 0;">🚀 Submit Results</h3>
+        </div>
+        """, unsafe_allow_html=True)
         
         with st.sidebar.form("submission_form"):
-            model_name = st.text_input("🤖 Model Name", placeholder="e.g., GPT-4, BERT-Telugu")
-            author_name = st.text_input("👤 Your Name or Alias", placeholder="e.g., John Doe")
-            version_tag = st.text_input("🏷️ Version Tag", placeholder="v1.0")
-            notes = st.text_area("📝 Notes", placeholder="Brief description of your model approach")
-            uploaded_file = st.file_uploader(
-                "📁 Upload result JSON file", 
-                type="json",
-                help="Upload your model predictions in the required JSON format"
+            model_name = st.text_input(
+                "Model Name*", 
+                placeholder="GPT-4, BERT-Telugu, Custom Model...",
+                help="Name of your model or approach"
+            )
+            author_name = st.text_input(
+                "Your Name*", 
+                placeholder="Your name or team name"
+            )
+            version_tag = st.text_input(
+                "Version", 
+                placeholder="v1.0, final, baseline...",
+                help="Optional version identifier"
+            )
+            notes = st.text_area(
+                "Description", 
+                placeholder="Brief description of your approach, training data, or methodology...",
+                help="Optional notes about your submission"
             )
             
-            submitted = st.form_submit_button("🚀 Submit Results", use_container_width=True)
+            st.markdown("<br>", unsafe_allow_html=True)
+            
+            uploaded_file = st.file_uploader(
+                "Upload Results JSON", 
+                type="json",
+                help="JSON file with your model's predictions"
+            )
+            
+            submitted = st.form_submit_button(
+                "📤 Submit to Leaderboard", 
+                use_container_width=True,
+                type="primary"
+            )
             
             if submitted:
                 return {
@@ -184,72 +220,71 @@ class UIComponents:
 
     @staticmethod
     def render_leaderboard(leaderboard_rows):
-        st.markdown("## 🏆 Leaderboard")
+        st.markdown("""
+        <div style="text-align: center; margin: 2rem 0;">
+            <h2 style="color: #495057; font-weight: 600;">🏆 Leaderboard</h2>
+        </div>
+        """, unsafe_allow_html=True)
         
         if leaderboard_rows:
-            # Add tabs for different views
-            tab1, tab2 = st.tabs(["📊 Main Metrics", "🔍 Detailed Analysis"])
+            df = pd.DataFrame(leaderboard_rows)
             
-            with tab1:
-                # Main metrics view
-                df = pd.DataFrame(leaderboard_rows)
-                main_cols = ["Model", "Author", "Version", "EM (%)", "F1 (%)", "Answered (%)", "Hallucinated (%)"]
-                if all(col in df.columns for col in main_cols):
-                    st.dataframe(
-                        df[main_cols].style.format({
-                            "EM (%)": "{:.1f}",
-                            "F1 (%)": "{:.1f}",
-                            "Answered (%)": "{:.1f}",
-                            "Hallucinated (%)": "{:.1f}"
-                        }),
-                        use_container_width=True
-                    )
-                else:
-                    st.dataframe(df, use_container_width=True)
-            
-            with tab2:
-                # Detailed analysis view
+            # Show key metrics in a clean table
+            main_cols = ["Model", "Author", "Version", "EM (%)", "F1 (%)", "Answered (%)", "Hallucinated (%)"]
+            if all(col in df.columns for col in main_cols):
+                st.dataframe(
+                    df[main_cols].style.format({
+                        "EM (%)": "{:.1f}%",
+                        "F1 (%)": "{:.1f}%", 
+                        "Answered (%)": "{:.1f}%",
+                        "Hallucinated (%)": "{:.1f}%"
+                    }).background_gradient(subset=["EM (%)", "F1 (%)"], cmap="RdYlGn"),
+                    use_container_width=True,
+                    hide_index=True
+                )
+            else:
+                st.dataframe(df, use_container_width=True, hide_index=True)
+                
+            # Optional detailed view
+            with st.expander("📊 View All Metrics", expanded=False):
                 st.dataframe(
                     df.style.format({
-                        col: "{:.1f}" for col in df.columns if "(%)" in col
+                        col: "{:.1f}%" for col in df.columns if "(%)" in col
                     }),
-                    use_container_width=True
+                    use_container_width=True,
+                    hide_index=True
                 )
         else:
-            st.info("🎯 No submissions yet. Be the first to submit your model!")
+            st.markdown("""
+            <div class="elegant-card" style="text-align: center;">
+                <h3 style="color: #6c757d;">🎯 No submissions yet</h3>
+                <p style="color: #6c757d;">Be the first to submit your model and claim the top spot!</p>
+            </div>
+            """, unsafe_allow_html=True)
 
     @staticmethod
     def render_sample_explorer(all_data, ref_lookup):
-        st.markdown("## 🔍 Sample Explorer")
-        
-        # Instructions with better formatting
-        with st.expander("ℹ️ How to Use Sample Explorer", expanded=False):
-            st.markdown("""
-            **Steps:**
-            1. **Choose a submission** from the dropdown (shows model name, author, version, and timestamp)
-            2. **Filter samples** by prediction type: hallucinated, faithful_correct, etc.
-            3. **Browse examples** using the slider to see different QA pairs
-            4. **View context** to understand the source material for each question
-            
-            *This is a read-only view of all submissions in the leaderboard.*
-            """)
+        st.markdown("""
+        <div style="text-align: center; margin: 3rem 0 2rem 0;">
+            <h2 style="color: #495057; font-weight: 600;">🔍 Sample Explorer</h2>
+            <p style="color: #6c757d; margin-top: 0.5rem;">Dive deep into model predictions and analyze performance patterns</p>
+        </div>
+        """, unsafe_allow_html=True)
 
         if all_data:
-            st.success(f"✅ Found {len(all_data)} submissions for exploration")
-
             selected_submission = st.selectbox(
-                "🎯 Choose a submission to explore", 
-                ["None"] + list(all_data.keys()),
+                "Choose a submission to explore", 
+                ["Select a model submission..."] + list(all_data.keys()),
                 help="Select a model submission to explore its predictions"
             )
 
-            if selected_submission != "None":
+            if selected_submission != "Select a model submission...":
                 UIComponents._display_submission_details(selected_submission, all_data, ref_lookup)
         else:
             st.markdown("""
-            <div style="text-align: center; padding: 2rem; background: #f8f9fa; border-radius: 8px;">
-                <h3>🎯 No submissions available yet</h3>
-                <p>Submit your first model to see results here!</p>
+            <div class="elegant-card" style="text-align: center;">
+                <h3 style="color: #6c757d;">🎯 No submissions available yet</h3>
+                <p style="color: #6c757d;">Submit your first model to start exploring results!</p>
             </div>
             """, unsafe_allow_html=True)
 
@@ -339,72 +374,77 @@ class UIComponents:
 
     @staticmethod
     def _render_sample_card(row, ref_lookup, current_idx, total_samples):
-        """Render individual sample card with enhanced styling"""
+        """Render individual sample card with clean, elegant styling"""
         # Get context for sample
         context_text = UIComponents._get_context_for_sample(
             row["content_id"], row["qa_index"], ref_lookup
         )
 
-        # Sample header
+        # Sample display
         st.markdown(f"""
-        <div class="sample-card">
-            <h4>Sample {current_idx} of {total_samples}</h4>
+        <div class="sample-display">
+            <h4 style="color: #495057; margin-bottom: 1.5rem;">📄 Sample {current_idx} of {total_samples}</h4>
+            
+            <div style="margin-bottom: 1rem;">
+                <strong style="color: #6c757d;">Question:</strong><br>
+                <span style="font-size: 1.1rem; color: #212529;">{row['question']}</span>
+            </div>
+            
+            <div style="margin-bottom: 1rem;">
+                <strong style="color: #28a745;">Expected Answer:</strong><br>
+                <span style="color: #28a745; font-weight: 500;">{row['gold_answer']}</span>
+            </div>
+            
+            <div style="margin-bottom: 1.5rem;">
+                <strong style="color: #007bff;">Model Prediction:</strong><br>
+                <span style="color: #007bff; font-weight: 500;">{row['prediction']}</span>
+            </div>
         </div>
         """, unsafe_allow_html=True)
-
-        # Question and answers
-        st.markdown(f"**❓ Question:** {row['question']}")
-        st.markdown(f"**✅ Gold Answer:** {row['gold_answer']}")
-        st.markdown(f"**🤖 Prediction:** {row['prediction']}")
         
-        # Metrics and status
+        # Metrics in clean cards
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric("F1 Score", f"{row['f1_score']:.3f}")
+            st.metric("🎯 F1 Score", f"{row['f1_score']:.3f}")
         with col2:
-            em_status = "✅ Yes" if row['exact_match'] else "❌ No"
-            st.metric("Exact Match", em_status)
+            em_value = "✅ Match" if row['exact_match'] else "❌ No Match"
+            st.metric("🔍 Exact Match", em_value)
         with col3:
-            hall_status = "⚠️ Yes" if row['hallucinated'] else "✅ No"
-            st.metric("Hallucinated", hall_status)
+            hall_value = "⚠️ Yes" if row['hallucinated'] else "✅ No"
+            st.metric("🚨 Hallucinated", hall_value)
         with col4:
-            # Type badge
-            type_color = {
-                "faithful_correct": "badge-correct",
-                "faithful_incorrect": "badge-incorrect", 
-                "hallucinated": "badge-hallucinated",
-                "empty": "badge-empty"
-            }.get(row['breakdown'], "badge-empty")
+            # Clean type badge
+            type_styles = {
+                "faithful_correct": "tag-excellent",
+                "faithful_incorrect": "tag-poor", 
+                "hallucinated": "tag-good",
+                "empty": "tag-neutral"
+            }
+            type_class = type_styles.get(row['breakdown'], "tag-neutral")
+            type_label = row['breakdown'].replace('_', ' ').title()
             
             st.markdown(f"""
-            <div class="status-badge {type_color}">
-                {row['breakdown'].replace('_', ' ').title()}
+            <div style="text-align: center; margin-top: 1rem;">
+                <span class="status-tag {type_class}">{type_label}</span>
             </div>
             """, unsafe_allow_html=True)
 
-        # Context display
-        with st.expander("📖 View Context", expanded=True):
+        # Context display with cleaner design
+        with st.expander("📖 View Source Context", expanded=False):
             if context_text and context_text not in ["[Context not available]", "[Empty context]"]:
                 st.markdown(f"""
-                <div class="context-box">
+                <div class="context-viewer">
                     {context_text}
                 </div>
                 """, unsafe_allow_html=True)
             else:
-                st.warning(f"⚠️ Context not found for content_id: {row['content_id']}, qa_index: {row['qa_index']}")
+                st.warning(f"Context not available for this sample (ID: {row['content_id']}, Index: {row['qa_index']})")
                 
-                # Debug information
-                with st.expander("🔧 Debug Information", expanded=False):
+                # Minimal debug info
+                if st.checkbox("Show debug info", key=f"debug_{current_idx}"):
                     lookup_key = (int(row['content_id']), int(row['qa_index']))
-                    st.code(f"Looking for key: {lookup_key}")
-                    
-                    if len(ref_lookup) > 0:
-                        st.info("Sample of available reference data keys:")
-                        sample_keys = list(ref_lookup.keys())[:10]
-                        for key in sample_keys:
-                            st.code(f"  {key}")
-                    else:
-                        st.error("❌ Reference lookup dictionary is empty!")
+                    st.code(f"Looking for: {lookup_key}")
+                    st.write(f"Available keys sample: {list(ref_lookup.keys())[:5]}...")
 
     @staticmethod
     def _calculate_context_coverage(df: pd.DataFrame, ref_lookup: Dict) -> float:

@@ -40,9 +40,6 @@ def main():
 
     ref_lookup = get_reference_lookup()
 
-    # Render status information
-    UIComponents.render_status_info(ref_lookup, db_manager.mongodb_available)
-
     # Handle submission form
     form_data = UIComponents.render_submission_form()
 
@@ -51,11 +48,6 @@ def main():
         if submission_handler.process_submission(form_data):
             st.session_state["uploaded"] = True
             st.rerun()
-
-    # Refresh button
-    if st.button("🔄 Refresh Data"):
-        st.cache_data.clear()
-        st.rerun()
 
     # Load submissions and prepare leaderboard
     submissions = db_manager.load_submissions()
