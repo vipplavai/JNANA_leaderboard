@@ -326,15 +326,27 @@ if all_data:
         df = submission_info["data"]
         metadata = submission_info["metadata"]
         
-        # Get fresh reference lookup for context
-        current_ref_lookup = get_ref_lookup()
+        # Load context directly from reference_samples collection for each sample
+        def get_context_for_sample(content_id, qa_index):
+            """Get context directly from reference_samples collection"""
+            try:
+                ref_doc = ref_collection.find_one({
+                    "content_id": int(content_id),
+                    "qa_index": int(qa_index)
+                })
+                if ref_doc and ref_doc.get("content_text"):
+                    return ref_doc["content_text"]
+                else:
+                    return "[Context not available]"
+            except Exception as e:
+                return f"[Error loading context: {e}]"
         
-        # Calculate context coverage
+        # Calculate context coverage by checking actual reference collection
         total_samples = len(df)
         context_available = 0
         for _, row in df.iterrows():
-            key = (int(row["content_id"]), int(row["qa_index"]))
-            if key in current_ref_lookup and current_ref_lookup[key].strip():
+            context = get_context_for_sample(row["content_id"], row["qa_index"])
+            if context != "[Context not available]" and not context.startswith("[Error"):
                 context_available += 1
         
         context_coverage = (context_available / total_samples * 100) if total_samples > 0 else 0
@@ -364,9 +376,8 @@ if all_data:
             i = st.slider("Sample Index", 0, len(df) - 1, 0)
             row = df.iloc[i]
             
-            # Get context from reference_samples collection using the lookup
-            context_key = (int(row["content_id"]), int(row["qa_index"]))
-            context_text = current_ref_lookup.get(context_key, "[Context not available]")
+            # Get context directly from reference_samples collection
+            context_text = get_context_for_sample(row["content_id"], row["qa_index"])
             
             st.markdown(f"**Q{row['qa_index']}**: {row['question']}")
             st.markdown(f"**Gold Answer**: {row['gold_answer']}")
