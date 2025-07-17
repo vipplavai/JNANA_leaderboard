@@ -24,7 +24,7 @@ def main():
     db_manager, submission_handler = initialize_components()
     UIComponents.render_header()
 
-    # Load reference data
+    # Load reference data silently
     @st.cache_data(ttl=3600)
     def get_reference_lookup():
         return db_manager.get_reference_data()
@@ -36,7 +36,7 @@ def main():
 
     if form_data.get('submitted') and form_data.get('uploaded_file'):
         if submission_handler.process_submission(form_data):
-            st.success("Submission successful!")
+            st.sidebar.success("✅ Submission successful!")
             st.rerun()
 
     # Load and display data

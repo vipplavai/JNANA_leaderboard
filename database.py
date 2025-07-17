@@ -30,11 +30,9 @@ class DatabaseManager:
             try:
                 # Try to load from MongoDB first
                 ref_data = list(self.ref_collection.find({}))
-                st.info(f"📥 Loaded {len(ref_data)} documents from MongoDB")
                 
                 # If MongoDB is empty, populate from local file
                 if not ref_data:
-                    st.info("📁 MongoDB empty, loading from local file...")
                     with open("data/samples_1000.json", "r", encoding="utf-8") as f:
                         ref_data = json.load(f)
                     
