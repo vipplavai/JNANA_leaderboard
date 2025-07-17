@@ -223,15 +223,19 @@ def load_submissions():
         submissions = list(submissions_collection.find({}).sort("timestamp", -1))  # Sort by newest first
         leaderboard_rows, all_data = [], {}
         
+        # Get fresh reference lookup to ensure context is available
+        current_ref_lookup = get_ref_lookup()
+        
         for sub in submissions:
             df = pd.DataFrame(sub["results"])
             df["breakdown"] = df["type"]
             
-            # Always ensure content_text is properly added using reference lookup
-            df["content_text"] = df.apply(
-                lambda row: ref_lookup.get((row["content_id"], row["qa_index"]), "[context not available]"),
-                axis=1
-            )
+            # Always ensure content_text is properly added using fresh reference lookup
+            def get_context(row):
+                context = current_ref_lookup.get((int(row["content_id"]), int(row["qa_index"])), "[context not available]")
+                return context
+            
+            df["content_text"] = df.apply(get_context, axis=1)
             
             # Verify context coverage for debugging
             missing_context = (df["content_text"] == "[context not available]").sum()
@@ -276,6 +280,11 @@ def load_submissions():
     except Exception as e:
         st.error(f"Error loading submissions from MongoDB: {e}")
         return [], {}
+
+# Add a refresh button to clear cache and reload data
+if st.button("🔄 Refresh Data"):
+    st.cache_data.clear()
+    st.rerun()
 
 # Load submissions data fresh each time to ensure proper context loading
 leaderboard_rows, all_data = load_submissions()
