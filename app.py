@@ -33,7 +33,7 @@ def main():
     # Render header
     UIComponents.render_header()
 
-    # Load reference data with caching
+    # Load reference data
     @st.cache_data(ttl=3600)
     def get_reference_lookup():
         return db_manager.get_reference_data()
