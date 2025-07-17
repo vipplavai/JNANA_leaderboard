@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from pymongo import MongoClient
 from typing import List, Dict
-from validate import clean_and_validate_submission
+
 
 # ---------------------------
 # Metric Computation
