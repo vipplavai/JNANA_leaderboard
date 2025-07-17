@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from pymongo import MongoClient
 from typing import List, Dict
-
+from validate import clean_and_validate_submission
 
 # ---------------------------
 # Metric Computation
@@ -71,6 +71,8 @@ st.markdown("""
 This leaderboard evaluates Telugu short-answer question-answering models using a curated 1000-sample benchmark.
 
 📎 **Download Evaluation Dataset**: [samples_1000.json](https://github.com/vipplavai/JNANA_leaderboard/blob/main/data/samples_1000.json)
+
+🔒 **Open Leaderboard**: All submissions are publicly viewable but cannot be edited or deleted to ensure leaderboard integrity.
 """)
 
 # ---------------------------
@@ -145,36 +147,57 @@ if uploaded_file and "uploaded" not in st.session_state:
             st.sidebar.error(f"❌ Error: {str(e)}")
 
 # ---------------------------
-# Load Submissions
+# Load Submissions from MongoDB
 # ---------------------------
-submissions = list(submissions_collection.find({}))
-leaderboard_rows, all_data = [], {}
+@st.cache_data(ttl=60)  # Cache for 60 seconds to reduce MongoDB calls
+def load_submissions():
+    submissions = list(submissions_collection.find({}).sort("timestamp", -1))  # Sort by newest first
+    leaderboard_rows, all_data = [], {}
+    
+    for sub in submissions:
+        df = pd.DataFrame(sub["results"])
+        df["breakdown"] = df["type"]
+        df["content_text"] = df.apply(
+            lambda row: ref_lookup.get((row["content_id"], row["qa_index"]), "[context not available]"),
+            axis=1
+        )
+        
+        # Create a readable submission identifier
+        model_name = sub.get("model", "Unknown")
+        author_name = sub.get("author", "Unknown")
+        version_tag = sub.get("version_tag", "")
+        timestamp = sub["timestamp"].strftime("%Y-%m-%d %H:%M")
+        
+        # Create display name for dropdown with proper model name formatting
+        display_name = f"🤖 {model_name}"
+        if version_tag:
+            display_name += f" v{version_tag}"
+        display_name += f" | 👤 {author_name} | 📅 {timestamp}"
+        
+        all_data[display_name] = {
+            "data": df,
+            "metadata": sub
+        }
+        
+        m = sub.get("metrics", {})
+        leaderboard_rows.append({
+            "Model": model_name,
+            "Author": author_name,
+            "Version": version_tag if version_tag else "N/A",
+            "Samples": m.get("total", 1000),
+            "EM (%)": m.get("em", 0.0),
+            "F1 (%)": m.get("f1", 0.0),
+            "Answered (%)": m.get("answered", 0.0),
+            "Hallucinated (%)": m.get("hallucinated", 0.0),
+            "Faithful Correct (%)": m.get("faithful_correct", 0.0),
+            "Faithful Incorrect (%)": m.get("faithful_incorrect", 0.0),
+            "Empty (%)": m.get("empty", 0.0),
+            "Timestamp": timestamp
+        })
+    
+    return leaderboard_rows, all_data
 
-for sub in submissions:
-    df = pd.DataFrame(sub["results"])
-    df["breakdown"] = df["type"]
-    df["content_text"] = df.apply(
-        lambda row: ref_lookup.get((row["content_id"], row["qa_index"]), "[context not available]"),
-        axis=1
-    )
-    sub_id = str(sub["_id"])
-    all_data[sub_id] = df
-    m = sub.get("metrics", {})
-
-    leaderboard_rows.append({
-        "Model": sub.get("model", "N/A"),
-        "Author": sub.get("author", "N/A"),
-        "Version": sub.get("version_tag", "N/A"),
-        "Samples": m.get("total", 1000),
-        "EM (%)": m.get("em", 0.0),
-        "F1 (%)": m.get("f1", 0.0),
-        "Answered (%)": m.get("answered", 0.0),
-        "Hallucinated (%)": m.get("hallucinated", 0.0),
-        "Faithful Correct (%)": m.get("faithful_correct", 0.0),
-        "Faithful Incorrect (%)": m.get("faithful_incorrect", 0.0),
-        "Empty (%)": m.get("empty", 0.0),
-        "Timestamp": sub["timestamp"].strftime("%Y-%m-%d %H:%M")
-    })
+leaderboard_rows, all_data = load_submissions()
 
 # ---------------------------
 # Leaderboard
@@ -186,14 +209,16 @@ if leaderboard_rows:
     leaderboard_df = pd.DataFrame(leaderboard_rows)
     
     if show_advanced:
-        # Add advanced metrics columns
+        # Get fresh submissions data for advanced metrics
+        submissions = list(submissions_collection.find({}).sort("timestamp", -1))
         for i, sub in enumerate(submissions):
-            m = sub.get("metrics", {})
-            leaderboard_df.loc[i, "FAA (%)"] = m.get("faa", 0.0)
-            leaderboard_df.loc[i, "F1-EM Gap"] = m.get("f1_em_gap", 0.0)
-            leaderboard_df.loc[i, "Overconfident EM (%)"] = m.get("overconfident_em", 0.0)
-            leaderboard_df.loc[i, "Robust Answer Rate (%)"] = m.get("robust_answer_rate", 0.0)
-            leaderboard_df.loc[i, "Avg Answer Length"] = m.get("avg_answer_length", 0.0)
+            if i < len(leaderboard_df):
+                m = sub.get("metrics", {})
+                leaderboard_df.loc[i, "FAA (%)"] = m.get("faa", 0.0)
+                leaderboard_df.loc[i, "F1-EM Gap"] = m.get("f1_em_gap", 0.0)
+                leaderboard_df.loc[i, "Overconfident EM (%)"] = m.get("overconfident_em", 0.0)
+                leaderboard_df.loc[i, "Robust Answer Rate (%)"] = m.get("robust_answer_rate", 0.0)
+                leaderboard_df.loc[i, "Avg Answer Length"] = m.get("avg_answer_length", 0.0)
     
     st.dataframe(leaderboard_df, use_container_width=True)
 else:
@@ -205,28 +230,53 @@ else:
 st.subheader("🔍 Sample Explorer")
 st.markdown("""
 ℹ️ **How to Use:**
-- Choose a submission.
+- Choose a submission from the dropdown (shows model name, author, version, and timestamp).
 - Filter samples by type: hallucinated, faithful_correct, etc.
 - Use the slider to browse examples.
+- This is a read-only view of all submissions in the leaderboard.
 """)
 
-selected_id = st.selectbox("Choose a submission to explore", ["None"] + list(all_data.keys()))
+if all_data:
+    selected_submission = st.selectbox(
+        "Choose a submission to explore", 
+        ["None"] + list(all_data.keys()),
+        help="Select a model submission to explore its predictions"
+    )
 
-if selected_id != "None":
-    df = all_data[selected_id]
-    tag_filter = st.selectbox("Breakdown Filter", ["all"] + sorted(df["breakdown"].unique()))
-    if tag_filter != "all":
-        df = df[df["breakdown"] == tag_filter]
+    if selected_submission != "None":
+        submission_info = all_data[selected_submission]
+        df = submission_info["data"]
+        metadata = submission_info["metadata"]
+        
+        # Show submission metadata
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("Total Samples", len(df))
+        with col2:
+            st.metric("EM Score", f"{metadata.get('metrics', {}).get('em', 0):.1f}%")
+        with col3:
+            st.metric("F1 Score", f"{metadata.get('metrics', {}).get('f1', 0):.1f}%")
+        
+        # Add notes if available
+        if metadata.get("notes"):
+            st.info(f"**Notes**: {metadata['notes']}")
+        
+        tag_filter = st.selectbox("Breakdown Filter", ["all"] + sorted(df["breakdown"].unique()))
+        if tag_filter != "all":
+            df = df[df["breakdown"] == tag_filter]
 
-    if df.empty:
-        st.warning("No samples for this filter.")
-    else:
-        i = st.slider("Sample Index", 0, len(df) - 1, 0)
-        row = df.iloc[i]
-        st.markdown(f"**Q{row['qa_index']}**: {row['question']}")
-        st.markdown(f"**Gold Answer**: {row['gold_answer']}")
-        st.markdown(f"**Prediction**: {row['prediction']}")
-        st.markdown(f"**F1**: {row['f1_score']:.2f} | EM: {row['exact_match']} | Hallucinated: {row['hallucinated']}")
-        st.markdown(f"**Type**: {row['breakdown']}")
-        st.markdown("---")
-        st.markdown(f"**Context**:\n\n{row['content_text']}")
+        if df.empty:
+            st.warning("No samples for this filter.")
+        else:
+            i = st.slider("Sample Index", 0, len(df) - 1, 0)
+            row = df.iloc[i]
+            
+            st.markdown(f"**Q{row['qa_index']}**: {row['question']}")
+            st.markdown(f"**Gold Answer**: {row['gold_answer']}")
+            st.markdown(f"**Prediction**: {row['prediction']}")
+            st.markdown(f"**F1**: {row['f1_score']:.2f} | EM: {row['exact_match']} | Hallucinated: {row['hallucinated']}")
+            st.markdown(f"**Type**: {row['breakdown']}")
+            st.markdown("---")
+            st.markdown(f"**Context**:\n\n{row['content_text']}")
+else:
+    st.info("No submissions available yet. Submit your first model to see results here!")
