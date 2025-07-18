@@ -46,9 +46,6 @@ class UIComponents:
         # Initialize session state once
         UIComponents._init_session_state()
         
-        # Submission form toggle button at the very top
-        UIComponents._render_toggle_button()
-
         # Header with instructions
         st.title("🏆 JNANA Telugu QA Leaderboard")
         st.markdown("**Evaluate your Telugu question-answering models on our curated 1000-sample benchmark**")
@@ -64,43 +61,30 @@ class UIComponents:
         if 'sidebar_visible' not in st.session_state:
             st.session_state.sidebar_visible = True
 
-    @staticmethod
-    def _render_toggle_button():
-        """Render toggle button for sidebar visibility - always visible for smooth UX"""
-        if st.session_state.sidebar_visible:
-            button_text = "🔽 Hide Submission Panel"
-            button_help = "Click to hide the submission form panel"
-            button_type = "secondary"
-        else:
-            button_text = "🔼 Show Submission Panel"
-            button_help = "Click to show the submission form panel"
-            button_type = "primary"
-        
-        # Position button in top-left corner with better styling
-        col1, col2 = st.columns([2, 6])
-        with col1:
-            if st.button(
-                button_text, 
-                help=button_help, 
-                key="sidebar_toggle",
-                type=button_type,
-                use_container_width=True
-            ):
-                st.session_state.sidebar_visible = not st.session_state.sidebar_visible
-                st.rerun()
-        with col2:
-            st.empty()  # Keep space for title
+    
 
     @staticmethod
     def render_submission_form():
-        # Check if sidebar should be visible
-        if not st.session_state.get('sidebar_visible', True):
-            # Show a subtle message when panel is hidden
-            with st.container():
-                st.info("💡 Submission panel is hidden. Use the '🔼 Show Submission Panel' button above to display it.")
-            return {"submitted": False}
-
-        st.sidebar.header("📤 Submit Your Results")
+        # Always show the toggle button in sidebar, even when "hidden"
+        with st.sidebar:
+            # Toggle button integrated in sidebar header area
+            if st.session_state.get('sidebar_visible', True):
+                # Sidebar is visible - show hide option
+                col1, col2 = st.columns([3, 1])
+                with col1:
+                    st.header("📤 Submit Your Results")
+                with col2:
+                    if st.button("🔽", help="Hide Submission Panel", key="hide_panel"):
+                        st.session_state.sidebar_visible = False
+                        st.rerun()
+            else:
+                # Sidebar is hidden - show only the show option
+                if st.button("🔼 Show Submission Panel", help="Click to show the submission form", key="show_panel", type="primary"):
+                    st.session_state.sidebar_visible = True
+                    st.rerun()
+                return {"submitted": False}
+        
+        # If we reach here, sidebar is visible, continue with form
 
         # Instructions in sidebar
         st.sidebar.markdown("""
