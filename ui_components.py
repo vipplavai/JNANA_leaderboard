@@ -36,8 +36,13 @@ class UIComponents:
         # Initialize session state once
         UIComponents._init_session_state()
         
-        # Header with instructions
-        st.title("🏆 JNANA Telugu QA Leaderboard")
+        # Add sidebar toggle helper
+        col1, col2 = st.columns([1, 6])
+        with col1:
+            st.button("📤", help="Toggle submission sidebar", key="sidebar_toggle")
+        with col2:
+            st.title("🏆 JNANA Telugu QA Leaderboard")
+        
         st.markdown("**Evaluate your Telugu question-answering models on our curated 1000-sample benchmark**")
 
         # GitHub link for guidelines
