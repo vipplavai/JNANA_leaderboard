@@ -29,17 +29,7 @@ class UIComponents:
             border-left: 4px solid #007bff;
             margin: 10px 0;
         }
-        .toggle-button {
-            position: fixed;
-            top: 10px;
-            left: 10px;
-            z-index: 999;
-            background: #ffffff;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            padding: 5px 10px;
-            font-size: 12px;
-        }
+        
         </style>
         """, unsafe_allow_html=True)
 
@@ -65,26 +55,23 @@ class UIComponents:
 
     @staticmethod
     def render_submission_form():
-        # Always show the toggle button in sidebar, even when "hidden"
         with st.sidebar:
-            # Toggle button integrated in sidebar header area
-            if st.session_state.get('sidebar_visible', True):
-                # Sidebar is visible - show hide option
-                col1, col2 = st.columns([3, 1])
-                with col1:
-                    st.header("📤 Submit Your Results")
-                with col2:
-                    if st.button("🔽", help="Hide Submission Panel", key="hide_panel"):
-                        st.session_state.sidebar_visible = False
-                        st.rerun()
-            else:
-                # Sidebar is hidden - show only the show option
-                if st.button("🔼 Show Submission Panel", help="Click to show the submission form", key="show_panel", type="primary"):
+            # Check if panel should be hidden
+            if not st.session_state.get('sidebar_visible', True):
+                # Show minimal button to restore panel
+                if st.button("🔼 Show Submission Panel", type="primary", use_container_width=True):
                     st.session_state.sidebar_visible = True
                     st.rerun()
                 return {"submitted": False}
-        
-        # If we reach here, sidebar is visible, continue with form
+            
+            # Panel is visible - show header with integrated toggle
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                st.header("📤 Submit Your Results")
+            with col2:
+                if st.button("🔽", help="Hide Submission Panel", key="hide_panel"):
+                    st.session_state.sidebar_visible = False
+                    st.rerun()
 
         # Instructions in sidebar
         st.sidebar.markdown("""
