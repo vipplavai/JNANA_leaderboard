@@ -1,3 +1,4 @@
+
 """
 UI Components for the JNANA QA Leaderboard
 """
@@ -14,7 +15,7 @@ class UIComponents:
             page_icon="🏆"
         )
 
-        # Clean styling
+        # Optimized styling - removed unused styles
         st.markdown("""
         <style>
         .stDeployButton { display: none; }
@@ -28,16 +29,23 @@ class UIComponents:
             border-left: 4px solid #007bff;
             margin: 10px 0;
         }
-        .explanation-box {
-            background: #e7f3ff;
-            padding: 20px;
-            border-radius: 8px;
-            margin: 20px 0;
-            border-left: 4px solid #0066cc;
+        .toggle-button {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 999;
+            background: #ffffff;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 5px 10px;
+            font-size: 12px;
         }
         </style>
         """, unsafe_allow_html=True)
 
+        # Initialize session state once
+        UIComponents._init_session_state()
+        
         # Submission form toggle button at the very top
         UIComponents._render_toggle_button()
 
@@ -51,32 +59,30 @@ class UIComponents:
         st.markdown("---")
 
     @staticmethod
-    def _render_toggle_button():
-        """Render the toggle button for sidebar visibility"""
-        # Initialize sidebar visibility state
+    def _init_session_state():
+        """Initialize all session state variables in one place"""
         if 'sidebar_visible' not in st.session_state:
             st.session_state.sidebar_visible = True
 
-        # Add toggle button in upper left corner
-        col1, col2 = st.columns([1, 4])
-        with col1:
-            if st.session_state.sidebar_visible:
-                button_text = "🔽 Hide Panel"
-                button_help = "Click to hide the submission form"
-            else:
-                button_text = "🔼 Show Panel"
-                button_help = "Click to show the submission form"
-            
-            if st.button(button_text, help=button_help, use_container_width=True):
-                st.session_state.sidebar_visible = not st.session_state.sidebar_visible
-                st.rerun()
-        with col2:
-            st.empty()  # Empty space to keep button on left
+    @staticmethod
+    def _render_toggle_button():
+        """Render optimized toggle button for sidebar visibility"""
+        # Simplified layout without wasted columns
+        button_text = "🔽 Hide Panel" if st.session_state.sidebar_visible else "🔼 Show Panel"
+        button_help = "Click to hide the submission form" if st.session_state.sidebar_visible else "Click to show the submission form"
+        
+        # Use container for better positioning
+        with st.container():
+            col1, col2, col3 = st.columns([1, 6, 1])
+            with col1:
+                if st.button(button_text, help=button_help, key="sidebar_toggle"):
+                    st.session_state.sidebar_visible = not st.session_state.sidebar_visible
+                    st.rerun()
 
     @staticmethod
     def render_submission_form():
-        # Only render sidebar content if visible
-        if not st.session_state.get('sidebar_visible', True):
+        # Simplified state check
+        if not st.session_state.sidebar_visible:
             return {"submitted": False}
 
         st.sidebar.header("📤 Submit Your Results")
@@ -114,7 +120,7 @@ class UIComponents:
 
     @staticmethod
     def render_metrics_explanation():
-        # Simple metrics info
+        # Simplified metrics info
         st.info("📊 **Understanding Metrics**: Detailed explanations of all metrics are available in our documentation.")
 
     @staticmethod
@@ -129,31 +135,44 @@ class UIComponents:
             st.subheader("📊 Detailed Performance Metrics")
             st.dataframe(df, use_container_width=True, hide_index=True)
 
-            # Top performers summary
+            # Optimized top performers summary
             if len(df) > 0:
-                st.subheader("🥇 Top Performers")
-                col1, col2, col3 = st.columns(3)
-
-                with col1:
-                    top_em = df.loc[df['EM (%)'].idxmax()]
-                    st.metric("🎯 Best EM Score", f"{top_em['EM (%)']}%", f"{top_em['Model']}")
-
-                with col2:
-                    top_f1 = df.loc[df['F1 (%)'].idxmax()]
-                    st.metric("🔍 Best F1 Score", f"{top_f1['F1 (%)']}%", f"{top_f1['Model']}")
-
-                with col3:
-                    top_faithful = df.loc[df['Faithful Correct (%)'].idxmax()]
-                    st.metric("✅ Most Faithful", f"{top_faithful['Faithful Correct (%)']}%", f"{top_faithful['Model']}")
+                UIComponents._render_top_performers(df)
 
         else:
             st.info("🔄 No submissions yet. Be the first to submit your model results!")
 
     @staticmethod
+    def _render_top_performers(df):
+        """Optimized top performers display"""
+        st.subheader("🥇 Top Performers")
+        
+        # Pre-calculate top performers to avoid repeated operations
+        top_performers = {
+            'em': df.loc[df['EM (%)'].idxmax()],
+            'f1': df.loc[df['F1 (%)'].idxmax()],
+            'faithful': df.loc[df['Faithful Correct (%)'].idxmax()]
+        }
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            top_em = top_performers['em']
+            st.metric("🎯 Best EM Score", f"{top_em['EM (%)']}%", f"{top_em['Model']}")
+
+        with col2:
+            top_f1 = top_performers['f1']
+            st.metric("🔍 Best F1 Score", f"{top_f1['F1 (%)']}%", f"{top_f1['Model']}")
+
+        with col3:
+            top_faithful = top_performers['faithful']
+            st.metric("✅ Most Faithful", f"{top_faithful['Faithful Correct (%)']}%", f"{top_faithful['Model']}")
+
+    @staticmethod
     def render_sample_explorer(all_data, ref_lookup):
         st.header("🔍 Sample Explorer")
 
-        # Simple info box
+        # Simplified info box
         st.info("ℹ️ **Sample Explorer**: Browse through individual model predictions and analyze performance patterns.")
 
         if all_data:
@@ -172,16 +191,31 @@ class UIComponents:
         submission_info = all_data[selected_submission]
         df = submission_info["data"]
         metadata = submission_info["metadata"]
-
-        # Enhanced metrics display
-        st.subheader(f"📈 Performance Overview")
-
-        # Core metrics in prominent display
-        col1, col2, col3, col4 = st.columns(4)
         metrics = metadata.get('metrics', {})
 
+        # Optimized metrics display
+        UIComponents._render_core_metrics(metrics, len(df))
+        UIComponents._render_detailed_metrics(metrics)
+
+        st.markdown("---")
+
+        # Sample filtering and browsing
+        st.subheader("🔍 Browse Individual Samples")
+        filtered_df = UIComponents._render_sample_filters(df)
+
+        if not filtered_df.empty:
+            UIComponents._render_sample_details(filtered_df, ref_lookup)
+        else:
+            st.info("🔍 No samples found for the selected filter.")
+
+    @staticmethod
+    def _render_core_metrics(metrics: Dict, total_samples: int):
+        """Render core metrics in a clean layout"""
+        st.subheader("📈 Performance Overview")
+        
+        col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.metric("📊 Total Samples", metrics.get('total', len(df)))
+            st.metric("📊 Total Samples", metrics.get('total', total_samples))
         with col2:
             st.metric("🎯 EM Score", f"{metrics.get('em', 0):.1f}%")
         with col3:
@@ -189,87 +223,103 @@ class UIComponents:
         with col4:
             st.metric("✅ Faithful Correct", f"{metrics.get('faithful_correct', 0):.1f}%")
 
-        # Additional metrics in expandable section
+    @staticmethod
+    def _render_detailed_metrics(metrics: Dict):
+        """Render detailed metrics in expandable section"""
         with st.expander("📊 Detailed Metrics Breakdown"):
-            col1, col2, col3 = st.columns(3)
+            # Group related metrics for better organization
+            metric_groups = [
+                [
+                    ("📝 Answered", "answered"),
+                    ("🚫 Hallucinated", "hallucinated"),
+                    ("📭 Empty", "empty")
+                ],
+                [
+                    ("❌ Faithful Incorrect", "faithful_incorrect"),
+                    ("🎭 FAA Score", "faa"),
+                    ("📏 F1-EM Gap", "f1_em_gap")
+                ],
+                [
+                    ("⚠️ Overconfident EM", "overconfident_em"),
+                    ("💪 Robust Answer Rate", "robust_answer_rate"),
+                    ("📊 Avg Answer Length", "avg_answer_length")
+                ]
+            ]
+            
+            cols = st.columns(3)
+            for i, group in enumerate(metric_groups):
+                with cols[i]:
+                    for label, key in group:
+                        value = metrics.get(key, 0)
+                        unit = " words" if key == "avg_answer_length" else "%"
+                        st.metric(label, f"{value:.1f}{unit}")
 
-            with col1:
-                st.metric("📝 Answered", f"{metrics.get('answered', 0):.1f}%")
-                st.metric("🚫 Hallucinated", f"{metrics.get('hallucinated', 0):.1f}%")
-                st.metric("📭 Empty", f"{metrics.get('empty', 0):.1f}%")
-
-            with col2:
-                st.metric("❌ Faithful Incorrect", f"{metrics.get('faithful_incorrect', 0):.1f}%")
-                st.metric("🎭 FAA Score", f"{metrics.get('faa', 0):.1f}%")
-                st.metric("📏 F1-EM Gap", f"{metrics.get('f1_em_gap', 0):.1f}%")
-
-            with col3:
-                st.metric("⚠️ Overconfident EM", f"{metrics.get('overconfident_em', 0):.1f}%")
-                st.metric("💪 Robust Answer Rate", f"{metrics.get('robust_answer_rate', 0):.1f}%")
-                st.metric("📊 Avg Answer Length", f"{metrics.get('avg_answer_length', 0):.1f} words")
-
-        st.markdown("---")
-
-        # Sample filtering and browsing
-        st.subheader("🔍 Browse Individual Samples")
-
+    @staticmethod
+    def _render_sample_filters(df):
+        """Render sample filtering controls and return filtered DataFrame"""
         col1, col2 = st.columns([2, 1])
         with col1:
             tag_filter = st.selectbox("🏷️ Filter by type", ["all"] + sorted(df["breakdown"].unique()))
+        
+        # Apply filter
+        filtered_df = df if tag_filter == "all" else df[df["breakdown"] == tag_filter]
+        
         with col2:
             if tag_filter != "all":
-                filtered_count = len(df[df["breakdown"] == tag_filter])
-                st.metric("Filtered Count", filtered_count)
+                st.metric("Filtered Count", len(filtered_df))
+        
+        return filtered_df
 
-        # Apply filter
-        if tag_filter != "all":
-            df = df[df["breakdown"] == tag_filter]
+    @staticmethod
+    def _render_sample_details(df, ref_lookup: Dict):
+        """Render individual sample details"""
+        # Sample navigation
+        sample_idx = st.slider("📍 Sample Index", 0, len(df) - 1, 0)
+        row = df.iloc[sample_idx]
 
-        if not df.empty:
-            # Sample navigation
-            sample_idx = st.slider("📍 Sample Index", 0, len(df) - 1, 0)
-            row = df.iloc[sample_idx]
+        # Sample display
+        st.markdown("### 📝 Sample Details")
 
-            # Sample display
-            st.markdown("### 📝 Sample Details")
+        # Question and answers
+        st.markdown(f"**❓ Question:** {row['question']}")
+        st.markdown(f"**🎯 Expected Answer:** {row['gold_answer']}")
+        st.markdown(f"**🤖 Model Prediction:** {row['prediction']}")
 
-            # Question and answers
-            st.markdown(f"**❓ Question:** {row['question']}")
-            st.markdown(f"**🎯 Expected Answer:** {row['gold_answer']}")
-            st.markdown(f"**🤖 Model Prediction:** {row['prediction']}")
+        # Metrics and type
+        UIComponents._render_sample_metrics(row)
 
-            # Metrics and type
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                st.metric("🔍 F1 Score", f"{row['f1_score']:.3f}")
-            with col2:
-                em_symbol = "✅" if row['exact_match'] else "❌"
-                st.metric("🎯 Exact Match", em_symbol)
-            with col3:
-                type_symbols = {
-                    "faithful_correct": "✅",
-                    "faithful_incorrect": "❌", 
-                    "hallucinated": "🚫",
-                    "empty": "📭"
-                }
-                symbol = type_symbols.get(row.get('type', 'unknown'), "❓")
-                st.metric("🏷️ Type", f"{symbol} {row.get('type', 'unknown')}")
+        # Context display
+        if st.checkbox("📖 Show Context", key=f"context_{sample_idx}"):
+            context = UIComponents._get_context(row["content_id"], row["qa_index"], ref_lookup)
+            if context and context != "[Context not available]":
+                st.text_area("📄 Source Context", context, height=200, key=f"context_text_{sample_idx}")
+            else:
+                st.warning("⚠️ Context not available for this sample")
 
-            # Context display
-            if st.checkbox("📖 Show Context", key=f"context_{sample_idx}"):
-                context = UIComponents._get_context(row["content_id"], row["qa_index"], ref_lookup)
-                if context and context != "[Context not available]":
-                    st.text_area("📄 Source Context", context, height=700, key=f"context_text_{sample_idx}")
-                else:
-                    st.warning("⚠️ Context not available for this sample")
-
-        else:
-            st.info(f"🔍 No samples found for filter: {tag_filter}")
+    @staticmethod
+    def _render_sample_metrics(row):
+        """Render individual sample metrics"""
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric("🔍 F1 Score", f"{row['f1_score']:.3f}")
+        with col2:
+            em_symbol = "✅" if row['exact_match'] else "❌"
+            st.metric("🎯 Exact Match", em_symbol)
+        with col3:
+            type_symbols = {
+                "faithful_correct": "✅",
+                "faithful_incorrect": "❌", 
+                "hallucinated": "🚫",
+                "empty": "📭"
+            }
+            symbol = type_symbols.get(row.get('type', 'unknown'), "❓")
+            st.metric("🏷️ Type", f"{symbol} {row.get('type', 'unknown')}")
 
     @staticmethod
     def _get_context(content_id: int, qa_index: int, ref_lookup: Dict) -> str:
+        """Get context with improved error handling"""
         try:
             key = (int(content_id), int(qa_index))
             return ref_lookup.get(key, "[Context not available]")
-        except:
+        except (ValueError, TypeError):
             return "[Context not available]"
