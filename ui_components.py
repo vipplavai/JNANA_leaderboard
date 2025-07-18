@@ -66,23 +66,23 @@ class UIComponents:
 
     @staticmethod
     def _render_toggle_button():
-        """Render optimized toggle button for sidebar visibility"""
-        # Simplified layout without wasted columns
+        """Render toggle button for sidebar visibility in top-left corner"""
         button_text = "🔽 Hide Panel" if st.session_state.sidebar_visible else "🔼 Show Panel"
         button_help = "Click to hide the submission form" if st.session_state.sidebar_visible else "Click to show the submission form"
         
-        # Use container for better positioning
-        with st.container():
-            col1, col2, col3 = st.columns([1, 6, 1])
-            with col1:
-                if st.button(button_text, help=button_help, key="sidebar_toggle"):
-                    st.session_state.sidebar_visible = not st.session_state.sidebar_visible
-                    st.rerun()
+        # Position button in top-left corner with proper layout
+        col1, col2 = st.columns([1, 7])
+        with col1:
+            if st.button(button_text, help=button_help, key="sidebar_toggle"):
+                st.session_state.sidebar_visible = not st.session_state.sidebar_visible
+                st.rerun()
+        with col2:
+            st.empty()  # Keep space for title
 
     @staticmethod
     def render_submission_form():
-        # Simplified state check
-        if not st.session_state.sidebar_visible:
+        # Check if sidebar should be visible
+        if not st.session_state.get('sidebar_visible', True):
             return {"submitted": False}
 
         st.sidebar.header("📤 Submit Your Results")
