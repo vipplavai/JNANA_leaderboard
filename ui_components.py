@@ -31,7 +31,7 @@ class UIComponents:
         }
         
         </style>
-        """, unsafe_allow_html=True)
+        """, unsafe_allow_html=False)
 
         # Initialize session state once
         UIComponents._init_session_state()
@@ -49,7 +49,7 @@ class UIComponents:
     def _init_session_state():
         """Initialize all session state variables in one place"""
         if 'sidebar_visible' not in st.session_state:
-            st.session_state.sidebar_visible = True
+            st.session_state.sidebar_visible = False
 
     
 
