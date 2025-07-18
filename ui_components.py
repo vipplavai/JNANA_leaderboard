@@ -31,7 +31,7 @@ class UIComponents:
         }
         
         </style>
-        """, unsafe_allow_html=True)
+        """, unsafe_allow_html=False)
 
         # Initialize session state once
         UIComponents._init_session_state()
