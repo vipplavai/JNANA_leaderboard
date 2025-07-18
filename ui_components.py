@@ -36,13 +36,7 @@ class UIComponents:
         # Initialize session state once
         UIComponents._init_session_state()
         
-        # Add sidebar toggle helper
-        col1, col2 = st.columns([1, 6])
-        with col1:
-            st.button("📤", help="Toggle submission sidebar", key="sidebar_toggle")
-        with col2:
-            st.title("🏆 JNANA Telugu QA Leaderboard")
-        
+        st.title("🏆 JNANA Telugu QA Leaderboard")
         st.markdown("**Evaluate your Telugu question-answering models on our curated 1000-sample benchmark**")
 
         # GitHub link for guidelines
@@ -59,39 +53,46 @@ class UIComponents:
 
     @staticmethod
     def render_submission_form():
-        with st.sidebar:
-            # Clean header - users can use native >> sidebar toggle
-            st.header("📤 Submit Your Results")
-            
-            # Instructions
+        # Submission form in main area with clean layout
+        st.header("📤 Submit Your Results")
+        
+        # Instructions in expandable section
+        with st.expander("📋 Submission Instructions", expanded=False):
             st.markdown("""
-            **Steps:**
+            **Steps to Submit:**
             1. Download [samples_1000.json](https://github.com/vipplavai/JNANA_leaderboard/blob/main/data/samples_1000.json)
             2. Run your model on the dataset
             3. Format results as JSON array
-            4. Upload below
+            4. Upload using the form below
             """)
 
-            st.markdown("---")
-
-            # Submission form
-            with st.form("submission_form"):
+        # Submission form in main area
+        with st.form("submission_form"):
+            col1, col2 = st.columns(2)
+            
+            with col1:
                 model_name = st.text_input("🤖 Model Name*", placeholder="e.g., GPT-4, Gemini-Pro")
                 author_name = st.text_input("👤 Your Name*", placeholder="e.g., John Doe")
+            
+            with col2:
                 version_tag = st.text_input("🏷️ Version", placeholder="e.g., v1.0")
-                notes = st.text_area("📝 Notes", placeholder="Brief description of your model")
                 uploaded_file = st.file_uploader("📁 Upload Results JSON", type="json")
-                submitted = st.form_submit_button("🚀 Submit to Leaderboard")
+            
+            notes = st.text_area("📝 Notes", placeholder="Brief description of your model")
+            
+            col_submit1, col_submit2, col_submit3 = st.columns([2, 1, 2])
+            with col_submit2:
+                submitted = st.form_submit_button("🚀 Submit to Leaderboard", use_container_width=True)
 
-                if submitted:
-                    return {
-                        "model_name": model_name,
-                        "author_name": author_name,
-                        "version_tag": version_tag,
-                        "notes": notes,
-                        "uploaded_file": uploaded_file,
-                        "submitted": True
-                    }
+            if submitted:
+                return {
+                    "model_name": model_name,
+                    "author_name": author_name,
+                    "version_tag": version_tag,
+                    "notes": notes,
+                    "uploaded_file": uploaded_file,
+                    "submitted": True
+                }
 
         return {"submitted": False}
 

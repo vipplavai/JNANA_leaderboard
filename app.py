@@ -31,13 +31,15 @@ def main():
 
     ref_lookup = get_reference_lookup()
 
-    # Handle submission
+    # Render submission form in main area
     form_data = UIComponents.render_submission_form()
 
     if form_data.get('submitted') and form_data.get('uploaded_file'):
         if submission_handler.process_submission(form_data):
-            st.sidebar.success("✅ Submission successful!")
+            st.success("✅ Submission successful!")
             st.rerun()
+
+    st.markdown("---")
 
     # Load and display data
     submissions = db_manager.load_submissions()
