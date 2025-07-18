@@ -251,8 +251,10 @@ class UIComponents:
     @staticmethod
     def _render_sample_details(df, ref_lookup: Dict):
         """Render individual sample details"""
-        # Sample navigation
-        sample_idx = st.slider("📍 Sample Index", 0, len(df) - 1, 0)
+        # Sample navigation with dropdown (much clearer than slider)
+        sample_options = [f"Sample {i+1} (ID: {row['content_id']}-{row['qa_index']})" for i, row in df.iterrows()]
+        selected_sample = st.selectbox("📍 Choose Sample to View", sample_options, key="sample_selector")
+        sample_idx = sample_options.index(selected_sample) if selected_sample else 0
         row = df.iloc[sample_idx]
 
         # Sample display

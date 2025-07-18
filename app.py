@@ -31,22 +31,23 @@ def main():
 
     ref_lookup = get_reference_lookup()
 
-    # Render submission form in main area
+    # Load and display data
+    submissions = db_manager.load_submissions()
+    leaderboard_rows, all_data = submission_handler.prepare_leaderboard_data(submissions)
+
+    # Show leaderboard first (most important content)
+    UIComponents.render_leaderboard(leaderboard_rows)
+    UIComponents.render_sample_explorer(all_data, ref_lookup)
+
+    st.markdown("---")
+
+    # Submission form at the bottom
     form_data = UIComponents.render_submission_form()
 
     if form_data.get('submitted') and form_data.get('uploaded_file'):
         if submission_handler.process_submission(form_data):
             st.success("✅ Submission successful!")
             st.rerun()
-
-    st.markdown("---")
-
-    # Load and display data
-    submissions = db_manager.load_submissions()
-    leaderboard_rows, all_data = submission_handler.prepare_leaderboard_data(submissions)
-
-    UIComponents.render_leaderboard(leaderboard_rows)
-    UIComponents.render_sample_explorer(all_data, ref_lookup)
 
 if __name__ == "__main__":
     main()
