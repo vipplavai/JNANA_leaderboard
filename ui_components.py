@@ -55,23 +55,25 @@ class UIComponents:
 
     @staticmethod
     def render_submission_form():
+        # Always show the toggle in sidebar - clean approach
         with st.sidebar:
-            # Check if panel should be hidden
-            if not st.session_state.get('sidebar_visible', True):
-                # Show minimal button to restore panel
-                if st.button("🔼 Show Submission Panel", type="primary", use_container_width=True):
+            # Create a compact toggle section
+            if st.session_state.get('sidebar_visible', True):
+                # Panel is visible - show header with hide option
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    st.header("📤 Submit Your Results")
+                with col2:
+                    if st.button("🔽", help="Hide Submission Panel", key="hide_panel", type="secondary"):
+                        st.session_state.sidebar_visible = False
+                        st.rerun()
+            else:
+                # Panel is hidden - show minimal restore option
+                st.markdown("### 📤")
+                if st.button("Show Submission Panel ⬆️", key="show_panel", type="primary", use_container_width=True):
                     st.session_state.sidebar_visible = True
                     st.rerun()
                 return {"submitted": False}
-            
-            # Panel is visible - show header with integrated toggle
-            col1, col2 = st.columns([4, 1])
-            with col1:
-                st.header("📤 Submit Your Results")
-            with col2:
-                if st.button("🔽", help="Hide Submission Panel", key="hide_panel"):
-                    st.session_state.sidebar_visible = False
-                    st.rerun()
 
         # Instructions in sidebar
         st.sidebar.markdown("""
