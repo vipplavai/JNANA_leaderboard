@@ -66,14 +66,26 @@ class UIComponents:
 
     @staticmethod
     def _render_toggle_button():
-        """Render toggle button for sidebar visibility in top-left corner"""
-        button_text = "🔽 Hide Panel" if st.session_state.sidebar_visible else "🔼 Show Panel"
-        button_help = "Click to hide the submission form" if st.session_state.sidebar_visible else "Click to show the submission form"
+        """Render toggle button for sidebar visibility - always visible for smooth UX"""
+        if st.session_state.sidebar_visible:
+            button_text = "🔽 Hide Submission Panel"
+            button_help = "Click to hide the submission form panel"
+            button_type = "secondary"
+        else:
+            button_text = "🔼 Show Submission Panel"
+            button_help = "Click to show the submission form panel"
+            button_type = "primary"
         
-        # Position button in top-left corner with proper layout
-        col1, col2 = st.columns([1, 7])
+        # Position button in top-left corner with better styling
+        col1, col2 = st.columns([2, 6])
         with col1:
-            if st.button(button_text, help=button_help, key="sidebar_toggle"):
+            if st.button(
+                button_text, 
+                help=button_help, 
+                key="sidebar_toggle",
+                type=button_type,
+                use_container_width=True
+            ):
                 st.session_state.sidebar_visible = not st.session_state.sidebar_visible
                 st.rerun()
         with col2:
@@ -83,6 +95,9 @@ class UIComponents:
     def render_submission_form():
         # Check if sidebar should be visible
         if not st.session_state.get('sidebar_visible', True):
+            # Show a subtle message when panel is hidden
+            with st.container():
+                st.info("💡 Submission panel is hidden. Use the '🔼 Show Submission Panel' button above to display it.")
             return {"submitted": False}
 
         st.sidebar.header("📤 Submit Your Results")
