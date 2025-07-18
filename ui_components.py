@@ -31,7 +31,7 @@ class UIComponents:
         }
         
         </style>
-        """, unsafe_allow_html=False)
+        """, unsafe_allow_html=True)
 
         # Initialize session state once
         UIComponents._init_session_state()
@@ -55,54 +55,49 @@ class UIComponents:
 
     @staticmethod
     def render_submission_form():
-        # Always show the toggle in sidebar - clean approach
         with st.sidebar:
-            # Create a compact toggle section
+            # Clean header with integrated toggle
             if st.session_state.get('sidebar_visible', True):
-                # Panel is visible - show header with hide option
-                col1, col2 = st.columns([4, 1])
-                with col1:
-                    st.header("📤 Submit Your Results")
-                with col2:
-                    if st.button("🔽", help="Hide Submission Panel", key="hide_panel", type="secondary"):
-                        st.session_state.sidebar_visible = False
-                        st.rerun()
+                # Show full panel with clickable header to hide
+                if st.button("📤 Submit Your Results 🔽", key="hide_panel", help="Click to hide panel", use_container_width=True):
+                    st.session_state.sidebar_visible = False
+                    st.rerun()
+                
+                # Instructions
+                st.markdown("""
+                **Steps:**
+                1. Download [samples_1000.json](https://github.com/vipplavai/JNANA_leaderboard/blob/main/data/samples_1000.json)
+                2. Run your model on the dataset
+                3. Format results as JSON array
+                4. Upload below
+                """)
+
+                st.markdown("---")
+
+                # Submission form
+                with st.form("submission_form"):
+                    model_name = st.text_input("🤖 Model Name*", placeholder="e.g., GPT-4, Gemini-Pro")
+                    author_name = st.text_input("👤 Your Name*", placeholder="e.g., John Doe")
+                    version_tag = st.text_input("🏷️ Version", placeholder="e.g., v1.0")
+                    notes = st.text_area("📝 Notes", placeholder="Brief description of your model")
+                    uploaded_file = st.file_uploader("📁 Upload Results JSON", type="json")
+                    submitted = st.form_submit_button("🚀 Submit to Leaderboard")
+
+                    if submitted:
+                        return {
+                            "model_name": model_name,
+                            "author_name": author_name,
+                            "version_tag": version_tag,
+                            "notes": notes,
+                            "uploaded_file": uploaded_file,
+                            "submitted": True
+                        }
             else:
-                # Panel is hidden - show minimal restore option
-                st.markdown("### 📤")
-                if st.button("Show Submission Panel ⬆️", key="show_panel", type="primary", use_container_width=True):
+                # Show minimal restore button
+                if st.button("📤 Submit Your Results ⬆️", key="show_panel", help="Click to show panel", use_container_width=True):
                     st.session_state.sidebar_visible = True
                     st.rerun()
                 return {"submitted": False}
-
-        # Instructions in sidebar
-        st.sidebar.markdown("""
-        **Steps:**
-        1. Download [samples_1000.json](https://github.com/vipplavai/JNANA_leaderboard/blob/main/data/samples_1000.json)
-        2. Run your model on the dataset
-        3. Format results as JSON array
-        4. Upload below
-        """)
-
-        st.sidebar.markdown("---")
-
-        with st.sidebar.form("submission_form"):
-            model_name = st.text_input("🤖 Model Name*", placeholder="e.g., GPT-4, Gemini-Pro")
-            author_name = st.text_input("👤 Your Name*", placeholder="e.g., John Doe")
-            version_tag = st.text_input("🏷️ Version", placeholder="e.g., v1.0")
-            notes = st.text_area("📝 Notes", placeholder="Brief description of your model")
-            uploaded_file = st.file_uploader("📁 Upload Results JSON", type="json")
-            submitted = st.form_submit_button("🚀 Submit to Leaderboard")
-
-            if submitted:
-                return {
-                    "model_name": model_name,
-                    "author_name": author_name,
-                    "version_tag": version_tag,
-                    "notes": notes,
-                    "uploaded_file": uploaded_file,
-                    "submitted": True
-                }
 
         return {"submitted": False}
 
