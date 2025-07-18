@@ -7,28 +7,32 @@ A comprehensive leaderboard system for evaluating Telugu question-answering mode
 
 The JNANA Telugu QA Leaderboard is an open evaluation platform designed to benchmark Telugu language models on question-answering tasks. Our system evaluates models not just on accuracy, but also on faithfulness and hallucination detection - crucial aspects for reliable AI systems.
 
+### Why JNANA Telugu QA Leaderboard?
+
+- **🎯 Comprehensive Evaluation**: Beyond simple accuracy, we measure faithfulness, hallucination detection, and model reliability
+- **📚 Rich Dataset**: 1000 carefully curated Telugu QA pairs with human annotations and quality scores
+- **🔍 Interactive Analysis**: Explore model predictions with detailed sample-by-sample analysis
+- **🏆 Fair Comparison**: Standardized evaluation protocol for consistent model comparison
+- **🌐 Open Platform**: Transparent evaluation process with public dataset and methodology
+
 ### Key Features
-- **Real-time Evaluation**: Upload predictions and get instant comprehensive metrics
-- **Interactive Sample Explorer**: Browse QA pairs with context and detailed analysis
-- **Faithfulness Analysis**: Detect hallucinated vs grounded responses
-- **Rich Dataset**: Human-annotated samples with quality scores and metadata
-- **Persistent Leaderboard**: Compare multiple model submissions over time
-- **MongoDB Integration**: Persistent storage with local fallback support
+- Real-time evaluation with instant comprehensive metrics
+- Interactive sample explorer for detailed analysis
+- Faithfulness analysis to detect hallucinated vs grounded responses
+- Persistent leaderboard with historical model comparisons
+- Rich metadata including topics, genres, and annotation quality scores
 
 ## 📂 Dataset
 
-### Overview
-Our benchmark consists of **1000 carefully curated Telugu QA pairs** with rich annotations:
+Our benchmark consists of **1000 carefully curated Telugu QA pairs** covering diverse topics including Biography, Science, History, Culture, Geography, Literature, Cinema, Mythology, and Sports.
 
-- **Diverse Topics**: Biography, Science, History, Culture, Geography, Literature, Cinema, Mythology, Sports, and more
+### Dataset Highlights
+- **Human-Annotated**: Multiple judgments per question with inter-annotator agreement scores
 - **Rich Context**: Each question includes relevant Telugu text passages for grounding
-- **Human Annotations**: Multiple judgments per question with inter-annotator agreement scores
-- **Quality Metrics**: Fleiss Kappa scores indicating annotation reliability
-- **Metadata**: Topic classification, genre, and tone information
+- **Quality Assured**: Fleiss Kappa scores indicating annotation reliability
+- **Diverse Coverage**: 15+ major topic categories with balanced representation
 
 ### Sample Structure
-Each sample in our dataset contains:
-
 ```json
 {
   "_id": {"$oid": "unique_identifier"},
@@ -47,23 +51,16 @@ Each sample in our dataset contains:
 }
 ```
 
-### Dataset Statistics
-- **Total Samples**: 1,000 QA pairs
-- **Average Context Length**: ~800 words
-- **Topics Covered**: 15+ major categories
-- **Languages**: Telugu (questions, answers, context)
-- **Quality Score**: High inter-annotator agreement (avg. Fleiss Kappa: 0.95+)
-
-### Download
+### Dataset Download
 ```bash
-# Direct download from repository
+# Download the complete dataset
 wget https://raw.githubusercontent.com/vipplavai/JNANA_leaderboard/main/data/samples_1000.json
 ```
 
-## ✅ Submission Format
+## 📋 Submission Guidelines
 
-### Required JSON Schema
-Your model predictions should follow this exact format:
+### Step 1: Prepare Your Results
+Your model predictions must follow this exact JSON format for all 1000 samples:
 
 ```json
 [
@@ -82,125 +79,156 @@ Your model predictions should follow this exact format:
 ]
 ```
 
-### Field Descriptions
-| Field | Type | Description |
-|-------|------|-------------|
-| `content_id` | int | Unique identifier for the source content |
-| `qa_index` | int | Question index within the content |
-| `question` | string | The Telugu question |
-| `gold_answer` | string | Reference answer from dataset |
-| `prediction` | string | Your model's prediction |
-| `exact_match` | boolean | Whether prediction exactly matches gold answer |
-| `f1_score` | float | Token-level F1 score (0.0-1.0) |
-| `answerable` | boolean | Whether model provided an answer |
-| `hallucinated` | boolean | Whether answer is not grounded in context |
-| `type` | string | One of: `faithful_correct`, `faithful_incorrect`, `hallucinated`, `empty` |
+### Step 2: Field Requirements
 
-### Validation Rules
-- All 1000 samples must be included
-- `content_id` and `qa_index` must match the reference dataset
-- F1 scores should be between 0.0 and 1.0
-- Type field must be one of the four valid categories
-- Empty predictions should have `answerable: false` and `type: "empty"`
+| Field | Type | Description | Requirements |
+|-------|------|-------------|--------------|
+| `content_id` | integer | Source content identifier | Must match dataset |
+| `qa_index` | integer | Question index within content | Must match dataset |
+| `question` | string | Telugu question text | Exact copy from dataset |
+| `gold_answer` | string | Reference answer | Exact copy from dataset |
+| `prediction` | string | Your model's answer | Your model's output |
+| `exact_match` | boolean | Perfect answer match | `true` if prediction == gold_answer |
+| `f1_score` | float | Token overlap score | Range: 0.0-1.0 |
+| `answerable` | boolean | Model provided answer | `false` for empty predictions |
+| `hallucinated` | boolean | Answer not grounded in context | Your evaluation |
+| `type` | string | Prediction category | See categories below |
 
-## 🧪 Metrics Tracked
+### Step 3: Prediction Categories
+
+**📝 `faithful_correct`**: Correct answer grounded in the provided context
+**❌ `faithful_incorrect`**: Wrong answer but grounded in the provided context  
+**🚫 `hallucinated`**: Answer not supported by the context (regardless of correctness)
+**📭 `empty`**: No answer provided by the model
+
+### Step 4: Validation Rules
+- ✅ Include all 1000 samples from the dataset
+- ✅ Ensure `content_id` and `qa_index` match exactly
+- ✅ F1 scores must be between 0.0 and 1.0
+- ✅ Use only the four valid `type` categories
+- ✅ Set `answerable: false` for empty predictions
+- ✅ Ensure JSON is valid and properly formatted
+
+### Step 5: Upload Process
+1. **📁 Save** your results as a `.json` file
+2. **🌐 Visit** the leaderboard interface
+3. **📜 Scroll down** to find the submission panel at the bottom of the page
+4. **📤 Upload** via the submission form
+5. **✅ Verify** validation passes
+6. **🏆 View** your results on the leaderboard
+
+## 📊 Metrics Explanation
 
 ### Core Performance Metrics
 
-**🎯 EM (Exact Match)**: Percentage of predictions that exactly match the gold answer
-- Higher is better • Range: 0-100%
-- Measures precise correctness
+**🎯 EM (Exact Match) - Percentage of perfect predictions**
+- Calculation: `(Exact matches / Total samples) × 100`
+- Range: 0-100% (higher is better)
+- Measures: Precise correctness
 
-**🔍 F1 Score**: Token-level overlap between prediction and gold answer  
-- Measures partial correctness • Range: 0-100%
-- Accounts for partial matches
+**🔍 F1 Score - Token-level overlap with gold answers**
+- Calculation: Harmonic mean of precision and recall
+- Range: 0-100% (higher is better)  
+- Measures: Partial correctness, handles spelling variations
 
-**📝 Answered**: Percentage of questions with non-empty predictions
-- Shows model coverage • Range: 0-100%
-- Indicates model's willingness to answer
+**📝 Answered Rate - Percentage of non-empty predictions**
+- Calculation: `(Non-empty predictions / Total samples) × 100`
+- Range: 0-100% (higher shows coverage)
+- Measures: Model's willingness to answer
 
 ### Faithfulness & Reliability Metrics
 
-**🚫 Hallucinated**: Predictions not grounded in the provided context
-- Lower is better • Shows model reliability
-- Critical for trustworthy AI systems
+**🚫 Hallucination Rate - Predictions not grounded in context**
+- Calculation: `(Hallucinated predictions / Total samples) × 100`
+- Range: 0-100% (lower is better)
+- Measures: Model reliability and groundedness
 
-**✅ Faithful Correct**: Correct answers that are grounded in context
-- Higher is better • Gold standard performance
-- Balances accuracy and faithfulness
+**✅ Faithful Correct - Accurate and grounded predictions**
+- Calculation: `(Faithful correct / Total samples) × 100`
+- Range: 0-100% (higher is better)
+- Measures: Gold standard performance
 
-**❌ Faithful Incorrect**: Wrong answers that are grounded in context
-- Shows reasoning errors vs hallucinations
-- Helps identify systematic issues
+**❌ Faithful Incorrect - Wrong but grounded predictions**
+- Calculation: `(Faithful incorrect / Total samples) × 100`
+- Range: 0-100% (shows reasoning vs hallucination errors)
+- Measures: Systematic reasoning issues
 
-**📭 Empty**: Questions with no prediction provided
-- Lower is better • Shows model coverage
-- Indicates conservative behavior
+**📭 Empty Rate - Questions with no prediction**
+- Calculation: `(Empty predictions / Total samples) × 100`
+- Range: 0-100% (lower shows better coverage)
+- Measures: Conservative behavior
 
 ### Advanced Analytics
 
-**🎭 FAA (Faithfulness-Adjusted Accuracy)**: Faithful correct percentage
-- Balances accuracy and faithfulness
-- More reliable than raw accuracy
+**🎭 FAA (Faithfulness-Adjusted Accuracy)**
+- Calculation: Same as Faithful Correct percentage
+- Purpose: Balances accuracy with reliability
+- Interpretation: More trustworthy than raw accuracy
 
-**📏 F1-EM Gap**: Difference between F1 and EM scores
-- Shows partial vs exact correctness
-- Indicates answer quality
+**📏 F1-EM Gap**
+- Calculation: `F1 Score - EM Score`
+- Purpose: Shows partial vs exact correctness
+- Interpretation: Large gap indicates approximate answers
 
-**⚠️ Overconfident EM**: Exact matches that are hallucinated
-- Identifies dangerous overconfidence
-- Critical safety metric
+**⚠️ Overconfident EM**
+- Calculation: `(Hallucinated exact matches / Total samples) × 100`
+- Purpose: Identifies dangerous overconfidence
+- Interpretation: Should be close to 0%
 
-**💪 Robust Answer Rate**: Answered rate minus hallucination rate
-- Net reliable answering capability
-- Shows practical utility
+**💪 Robust Answer Rate**
+- Calculation: `Answered Rate - Hallucination Rate`
+- Purpose: Net reliable answering capability  
+- Interpretation: Practical model utility
 
-**📊 Avg Answer Length**: Mean word count of predictions
-- Indicates response verbosity
-- Helps understand model behavior
+**📊 Average Answer Length**
+- Calculation: Mean word count of all predictions
+- Purpose: Understanding response verbosity
+- Interpretation: Varies by model strategy
 
-### Understanding the Metrics
-```
-High EM + Low Hallucination = Reliable Model ✅
-High F1 + High Hallucination = Creative but Unreliable ⚠️
-Low Answered + Low Hallucination = Conservative Model 🤔
-High FAA = Best Overall Performance 🏆
-```
-## 🖥️ Sample Explorer Guide
 
-### Getting Started
-1. **📥 Submit Results**: Upload your model predictions via the sidebar form
-2. **📊 Select Submission**: Choose from dropdown (shows model, author, version, timestamp)  
-3. **🏷️ Filter Samples**: Use type filter to focus on specific prediction categories
-4. **🎚️ Navigate**: Use slider to browse through filtered samples
-5. **📖 View Context**: Click "Show Context" to see source passages
 
-## 🔗 Useful Links
+## 🔍 Sample Explorer
 
-### Dataset & Repository
-- **📊 Leaderboard**: [Live Leaderboard](https://your-repl-url.repl.co)
-- **📁 Dataset Download**: [samples_1000.json](https://github.com/vipplavai/JNANA_leaderboard/blob/main/data/samples_1000.json)
-- **💻 Source Code**: [GitHub Repository](https://github.com/vipplavai/JNANA_leaderboard)
-- **📋 Issues & Discussions**: [GitHub Issues](https://github.com/vipplavai/JNANA_leaderboard/issues)
+Analyze individual model predictions and understand performance patterns through our interactive explorer.
+
+### Key Features
+- **📊 Compare Submissions**: Select and analyze different model results
+- **🏷️ Smart Filtering**: Focus on specific prediction types (faithful_correct, hallucinated, etc.)
+- **📖 Context Analysis**: View source passages alongside questions and predictions
+- **📈 Detailed Metrics**: Examine F1 scores, exact matches, and prediction categories
+
+### How to Use
+1. Submit your model results using the form below
+2. Select your submission from the explorer dropdown
+3. Filter by prediction type to analyze specific behaviors
+4. Browse individual samples to understand model reasoning
 
 ## 📬 Contact
 
 ### Research Team
-- **📧 Primary Contact**: [research@jnana-leaderboard.org](mailto:research@jnana-leaderboard.org)
-- **🔬 Technical Issues**: [tech-support@jnana-leaderboard.org](mailto:tech-support@jnana-leaderboard.org)
+- **📧 General Inquiries**: [research@jnana-leaderboard.org](mailto:research@jnana-leaderboard.org)
+- **🔬 Technical Support**: [tech-support@jnana-leaderboard.org](mailto:tech-support@jnana-leaderboard.org)  
 - **🤝 Collaborations**: [partnerships@jnana-leaderboard.org](mailto:partnerships@jnana-leaderboard.org)
 
-### Citation
-If you use JNANA Telugu QA Leaderboard in your research, please cite:
+### Community Links
+- **💻 GitHub Repository**: [vipplavai/JNANA_leaderboard](https://github.com/vipplavai/JNANA_leaderboard)
+- **🐛 Report Issues**: [GitHub Issues](https://github.com/vipplavai/JNANA_leaderboard/issues)
+- **💬 Discussions**: [GitHub Discussions](https://github.com/vipplavai/JNANA_leaderboard/discussions)
+
+## 📜 Citation
+
+If you use the JNANA Telugu QA Leaderboard in your research, please cite:
+
 ```bibtex
 @dataset{jnana_telugu_qa_2024,
   title={JNANA Telugu QA Leaderboard: A Comprehensive Benchmark for Telugu Question Answering},
   author={Research Team},
   year={2024},
-  url={https://github.com/vipplavai/JNANA_leaderboard}
+  url={https://github.com/vipplavai/JNANA_leaderboard},
+  note={A curated benchmark of 1000 Telugu QA pairs with human annotations}
 }
 ```
 
 ---
 
-**📊 Start Evaluating**: Ready to test your Telugu QA model? [Submit your results](https://your-repl-url.repl.co) and join the leaderboard!
+**🚀 Ready to evaluate your Telugu QA model?** Download the dataset, prepare your results, and submit to join the leaderboard!
