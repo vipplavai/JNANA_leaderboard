@@ -48,50 +48,45 @@ class UIComponents:
     @staticmethod
     def _init_session_state():
         """Initialize all session state variables in one place"""
-        if 'sidebar_visible' not in st.session_state:
-            st.session_state.sidebar_visible = False
+        pass
 
     
 
     @staticmethod
     def render_submission_form():
         with st.sidebar:
-            # Toggle button with clean design
-            arrow = "🔽" if st.session_state.sidebar_visible else "▶️"
-            if st.button(f"{arrow} 📤 Submit Your Results", use_container_width=True):
-                st.session_state.sidebar_visible = not st.session_state.sidebar_visible
+            # Clean header - users can use native >> sidebar toggle
+            st.header("📤 Submit Your Results")
             
-            # Show form only when visible
-            if st.session_state.sidebar_visible:
-                # Instructions
-                st.markdown("""
-                **Steps:**
-                1. Download [samples_1000.json](https://github.com/vipplavai/JNANA_leaderboard/blob/main/data/samples_1000.json)
-                2. Run your model on the dataset
-                3. Format results as JSON array
-                4. Upload below
-                """)
+            # Instructions
+            st.markdown("""
+            **Steps:**
+            1. Download [samples_1000.json](https://github.com/vipplavai/JNANA_leaderboard/blob/main/data/samples_1000.json)
+            2. Run your model on the dataset
+            3. Format results as JSON array
+            4. Upload below
+            """)
 
-                st.markdown("---")
+            st.markdown("---")
 
-                # Submission form
-                with st.form("submission_form"):
-                    model_name = st.text_input("🤖 Model Name*", placeholder="e.g., GPT-4, Gemini-Pro")
-                    author_name = st.text_input("👤 Your Name*", placeholder="e.g., John Doe")
-                    version_tag = st.text_input("🏷️ Version", placeholder="e.g., v1.0")
-                    notes = st.text_area("📝 Notes", placeholder="Brief description of your model")
-                    uploaded_file = st.file_uploader("📁 Upload Results JSON", type="json")
-                    submitted = st.form_submit_button("🚀 Submit to Leaderboard")
+            # Submission form
+            with st.form("submission_form"):
+                model_name = st.text_input("🤖 Model Name*", placeholder="e.g., GPT-4, Gemini-Pro")
+                author_name = st.text_input("👤 Your Name*", placeholder="e.g., John Doe")
+                version_tag = st.text_input("🏷️ Version", placeholder="e.g., v1.0")
+                notes = st.text_area("📝 Notes", placeholder="Brief description of your model")
+                uploaded_file = st.file_uploader("📁 Upload Results JSON", type="json")
+                submitted = st.form_submit_button("🚀 Submit to Leaderboard")
 
-                    if submitted:
-                        return {
-                            "model_name": model_name,
-                            "author_name": author_name,
-                            "version_tag": version_tag,
-                            "notes": notes,
-                            "uploaded_file": uploaded_file,
-                            "submitted": True
-                        }
+                if submitted:
+                    return {
+                        "model_name": model_name,
+                        "author_name": author_name,
+                        "version_tag": version_tag,
+                        "notes": notes,
+                        "uploaded_file": uploaded_file,
+                        "submitted": True
+                    }
 
         return {"submitted": False}
 
