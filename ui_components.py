@@ -40,7 +40,7 @@ class UIComponents:
         st.markdown("**Evaluate your Telugu question-answering models on our curated 1000-sample benchmark**")
 
         # GitHub link for guidelines
-        st.info("📖 **Complete submission guidelines and documentation available on [GitHub](https://github.com/vipplavai/JNANA_leaderboard)**")
+        st.info("📖 **Scroll to the bottom of the page for submitting,Complete submission guidelines and documentation available on [GitHub](https://github.com/vipplavai/JNANA_leaderboard)**")
 
         st.markdown("---")
 
